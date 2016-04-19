@@ -1,9 +1,14 @@
 package edu.umd.cs.xplore;
 
+import android.Manifest;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.AsyncTask;
-import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.content.ContextCompat;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -23,10 +28,8 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -58,6 +61,25 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+
+        // Enable showing user's location on map (blue dot/center on current location control)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            mMap.setMyLocationEnabled(true);
+        } else {
+            // TODO: request user permission if disabled and explain rationale for why it's needed here
+            // For debugging prior to this implementation: Settings>Apps>Xplore>Permissions, then enable Location
+
+            // Use Android Device Monitor (Tools>Android>Android Device Monitor), "emulator control" tab, then manually send
+            // coordinates of current location to the device under "Location Controls".
+
+            Context context = getApplicationContext();
+            CharSequence text = "Location permission disabled; see comments in code on how to enable and manually send location to AVD";
+            int duration = Toast.LENGTH_LONG;
+
+            Toast toast = Toast.makeText(context, text, duration);
+            toast.show();
+        }
 
         // Sample addresses for testing prior to integration with actual initial places
         // These can be addresses, precise location names, etc. (anything that Google Maps can find the *correct* coordinates for)
