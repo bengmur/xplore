@@ -38,6 +38,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".PlanActivity"
+            android:label="@string/title_activity_plan">
+        </activity>
     </application>
 
 </manifest>
