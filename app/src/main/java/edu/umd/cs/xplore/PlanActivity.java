@@ -92,7 +92,17 @@ public class PlanActivity extends AppCompatActivity {
         public void onTimeSet(TimePicker view, int hours, int minutes) {
             // Do something with the time chosen by the user
             EditText time_field = (EditText) getActivity().findViewById(R.id.time_field);
-            time_field.setText(Integer.toString(hours) + ":" + Integer.toString(minutes));
+
+            String hoursString = Integer.toString(hours);
+            if (hoursString.matches("0")) {
+                hoursString = "00";
+            }
+
+            String minutesString = Integer.toString(minutes);
+            if (minutesString.matches("0")) {
+                minutesString = "00";
+            }
+            time_field.setText(hoursString + ":" + minutesString);
         }
     }
 }
