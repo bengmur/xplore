@@ -3,6 +3,7 @@ package edu.umd.cs.xplore;
 import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.TimePickerDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -12,6 +13,9 @@ import android.text.format.DateFormat;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TimePicker;
+
+import java.lang.reflect.GenericArrayType;
+import java.util.ArrayList;
 
 public class PlanActivity extends AppCompatActivity {
 
@@ -23,9 +27,34 @@ public class PlanActivity extends AppCompatActivity {
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.plan_fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+            public void onClick(View view) { // Create intent for the PreferencesActivity
+                // get text field inputs
+                EditText timeField = (EditText) findViewById(R.id.time_field);
+                EditText destField = (EditText) findViewById(R.id.destination);
+
+                String time = timeField.getText().toString();
+                String inputDest = destField.getText().toString();
+
+                // If the user didn't input a dest, create a list of possible destinations
+                //  Otherwise (if the user did input a dest), the list is just one element (their input)
+                ArrayList<String> destinations = new ArrayList<String>();
+
+                if (inputDest.matches("")) {
+                    // some API call based on their time input and assumptions
+                } else {
+                    destinations.add(inputDest);
+                }
+
+                Intent preferencesIntent = new Intent();
+
+                preferencesIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
+                preferencesIntent.putStringArrayListExtra(Intent.EXTRA_STREAM, destinations);
+                preferencesIntent.setType("possibleDestinations");
+
+                startActivity(preferencesIntent);
+
+                /*Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show(); */
             }
         });
 
@@ -63,7 +92,17 @@ public class PlanActivity extends AppCompatActivity {
         public void onTimeSet(TimePicker view, int hours, int minutes) {
             // Do something with the time chosen by the user
             EditText time_field = (EditText) getActivity().findViewById(R.id.time_field);
-            time_field.setText(Integer.toString(hours) + ":" + Integer.toString(minutes));
+
+            String hoursString = Integer.toString(hours);
+            if (hoursString.matches("0")) {
+                hoursString = "00";
+            }
+
+            String minutesString = Integer.toString(minutes);
+            if (minutesString.matches("0")) {
+                minutesString = "00";
+            }
+            time_field.setText(hoursString + ":" + minutesString);
         }
     }
 }
