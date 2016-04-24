@@ -11,6 +11,7 @@ import android.widget.GridView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 
 /**
@@ -19,6 +20,7 @@ import java.util.HashSet;
 public class PreferencesActivity extends AppCompatActivity {
 
     private PreferencesAdapter prefAdapter;
+    private ArrayList<String> destinationList;
     private PreferenceList prefList = PreferenceList.getInstance();
     private HashSet<String> selectedPreferences = new HashSet<String>();
     static final String SELECTED_PREFERENCES = "edu.umd.cs.xplore.SELECTED_PREFERENCES";
@@ -27,6 +29,20 @@ public class PreferencesActivity extends AppCompatActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.preferences_layout);
+
+        // Check for an Intent from PlanActivity
+        Intent intent = getIntent();
+        String action = intent.getAction();
+        String type = intent.getType();
+        if (Intent.ACTION_SEND_MULTIPLE.equals(action) && type != null) {
+            if ("possibleDestinations".equals(type)) {
+                handleSendDestinations(intent);
+            } else {
+                //TODO Handle other intents
+            }
+        } else {
+            //TODO Handle other intents
+        }
 
         // set up the toolbar
         Toolbar prefToolbar = (Toolbar) findViewById(R.id.preferences_toolbar);
@@ -38,7 +54,9 @@ public class PreferencesActivity extends AppCompatActivity {
 
             public void onClick(View view) {
                 Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                intent.setAction(Intent.ACTION_SEND);
                 intent.putExtra(SELECTED_PREFERENCES, selectedPreferences);
+                intent.setType("list/preferences");
                 startActivity(intent);
             }
         });
@@ -77,6 +95,11 @@ public class PreferencesActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    private void handleSendDestinations(Intent intent) {
+        destinationList = intent.getStringArrayListExtra(Intent.EXTRA_STREAM);
+        Toast.makeText(this, destinationList.toString(), Toast.LENGTH_LONG).show();
     }
 
 }

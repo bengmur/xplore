@@ -17,6 +17,7 @@ import java.util.HashSet;
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
+    private HashSet<String> selectedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,10 +28,19 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+        // Check for an Intent from PreferencesActivity
         Intent intent = getIntent();
-        HashSet<String> selectedPreferences =
-                (HashSet<String>) intent.getSerializableExtra(PreferencesActivity.SELECTED_PREFERENCES);
-        Toast.makeText(this, selectedPreferences.toString(), Toast.LENGTH_LONG).show();
+        String action = intent.getAction();
+        String type = intent.getType();
+        if (Intent.ACTION_SEND.equals(action) && type != null) {
+            if ("list/preferences".equals(type)) {
+                handleSendPreferences(intent);
+            } else {
+                //TODO Handle other intents
+            }
+        } else {
+            //TODO Handle other intents
+        }
     }
 
     /**
@@ -50,5 +60,12 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         LatLng sydney = new LatLng(-34, 151);
         mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+    }
+
+    // Store HashSet containing preferences sent from PreferencesActivity
+    private void handleSendPreferences(Intent intent) {
+        selectedPreferences =
+                (HashSet<String>) intent.getSerializableExtra(PreferencesActivity.SELECTED_PREFERENCES);
+        Toast.makeText(this, selectedPreferences.toString(), Toast.LENGTH_LONG).show();
     }
 }
