@@ -6,15 +6,11 @@ import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
-import android.text.format.DateFormat;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TimePicker;
 
-import java.lang.reflect.GenericArrayType;
 import java.util.ArrayList;
 
 public class PlanActivity extends AppCompatActivity {
@@ -45,7 +41,7 @@ public class PlanActivity extends AppCompatActivity {
                     destinations.add(inputDest);
                 }
 
-                Intent preferencesIntent = new Intent();
+                Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
 
                 preferencesIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
                 preferencesIntent.putStringArrayListExtra(Intent.EXTRA_STREAM, destinations);
