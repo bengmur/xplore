@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.HashSet;
 import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -40,6 +41,7 @@ import javax.net.ssl.HttpsURLConnection;
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
+    private HashSet<String> selectedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,8 +60,21 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 startActivity(intent);
             }
         });
-    }
 
+        // Check for an Intent from PreferencesActivity
+        Intent intent = getIntent();
+        String action = intent.getAction();
+        String type = intent.getType();
+        if (Intent.ACTION_SEND.equals(action) && type != null) {
+            if ("list/preferences".equals(type)) {
+                handleSendPreferences(intent);
+            } else {
+                //TODO Handle other intents
+            }
+        } else {
+            //TODO Handle other intents
+        }
+    }
 
     /**
      * Manipulates the map once available.
@@ -106,6 +121,13 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         DirectionsAsyncTask routePolylineDrawer = new DirectionsAsyncTask();
         routePolylineDrawer.execute(addrSamples);
 
+    }
+
+    // Store HashSet containing preferences sent from PreferencesActivity
+    private void handleSendPreferences(Intent intent) {
+        selectedPreferences =
+                (HashSet<String>) intent.getSerializableExtra(PreferencesActivity.SELECTED_PREFERENCES);
+        Toast.makeText(this, selectedPreferences.toString(), Toast.LENGTH_LONG).show();
     }
 
     private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
@@ -198,5 +220,4 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             return "";
         }
     }
-
 }
