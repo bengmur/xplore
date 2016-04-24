@@ -1,6 +1,7 @@
 package edu.umd.cs.xplore;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -8,6 +9,7 @@ import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.view.View;
@@ -33,13 +35,31 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
 
-public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MainActivity extends FragmentActivity implements
+        OnMapReadyCallback,
+        ActivityCompat.OnRequestPermissionsResultCallback {
 
     private GoogleMap mMap;
+
+    private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
+    private BroadcastReceiver locationReceiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Bundle bundle = intent.getExtras();
+            if (bundle != null) {
+                actualLocations.add(new LatLng(bundle.getDouble("lat"),
+                        bundle.getDouble("lng")));
+
+                drawMovingLoc();
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,23 +95,13 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mMap = googleMap;
 
         // Enable showing user's location on map (blue dot/center on current location control)
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
-            mMap.setMyLocationEnabled(true);
-        } else {
-            // TODO: request user permission if disabled and explain rationale for why it's needed here
-            // For debugging prior to this implementation: Settings>Apps>Xplore>Permissions, then enable Location
+        // Use Android Device Monitor (Tools>Android>Android Device Monitor), "emulator control" tab, then manually send
+        // coordinates of current location to the device under "Location Controls".
+        enableMyLocation();
 
-            // Use Android Device Monitor (Tools>Android>Android Device Monitor), "emulator control" tab, then manually send
-            // coordinates of current location to the device under "Location Controls".
-
-            Context context = getApplicationContext();
-            CharSequence text = "Location permission disabled; see comments in code on how to enable and manually send location to AVD";
-            int duration = Toast.LENGTH_LONG;
-
-            Toast toast = Toast.makeText(context, text, duration);
-            toast.show();
-        }
+        // Start loc tracking service
+        Intent serviceIntent = new Intent(this, LocationTracker.class);
+        startService(serviceIntent);
 
         // Sample addresses for testing prior to integration with actual initial places
         // These can be addresses, precise location names, etc. (anything that Google Maps can find the *correct* coordinates for)
@@ -185,6 +195,15 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    private void drawMovingLoc() {
+        Context context = getApplicationContext();
+        CharSequence text = actualLocations.get(actualLocations.size() - 1).toString();
+        int duration = Toast.LENGTH_LONG;
+
+        Toast toast = Toast.makeText(context, text, duration);
+        toast.show();
+    }
+
     private String readStream(InputStream is) {
         try {
             ByteArrayOutputStream bo = new ByteArrayOutputStream();
@@ -196,6 +215,38 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             return bo.toString();
         } catch (IOException e) {
             return "";
+        }
+    }
+
+    private void enableMyLocation() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+        } else {
+            mMap.setMyLocationEnabled(true);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case 0: { // ACCESS_FINE_LOCATION case
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    enableMyLocation();
+                } else {
+                    // permission denied: quit app (location is vital to usage..)
+                    // TODO: handle this more cleanly instead of just exiting out
+                    finish();
+                }
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request
         }
     }
 

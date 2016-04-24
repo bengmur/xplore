@@ -40,8 +40,12 @@
         </activity>
         <activity
             android:name=".PlanActivity"
-            android:label="@string/title_activity_plan">
-        </activity>
+            android:label="@string/title_activity_plan"></activity>
+
+        <service
+            android:name=".LocationTracker"
+            android:enabled="true"
+            android:exported="true"></service>
     </application>
 
 </manifest>
