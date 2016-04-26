@@ -3,6 +3,7 @@ package edu.umd.cs.xplore;
 import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.TimePickerDialog;
+import android.content.Intent;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -11,10 +12,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateFormat;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.NumberPicker;
 import android.widget.TimePicker;
+
+import java.util.ArrayList;
 
 import java.util.Locale;
 
@@ -65,6 +67,33 @@ public class PlanActivity extends AppCompatActivity {
         int hours = hourField.getValue();
         int minutes = minuteField.getValue();
         // TODO: Create intent and send hour and minute values
+        // get text field inputs
+        EditText timeField = (EditText) findViewById(R.id.time_field);
+        EditText destField = (EditText) findViewById(R.id.destination);
+
+        String time = timeField.getText().toString();
+        String inputDest = destField.getText().toString();
+
+        // If the user didn't input a dest, create a list of possible destinations
+        //  Otherwise (if the user did input a dest), the list is just one element (their input)
+        ArrayList<String> destinations = new ArrayList<String>();
+
+        if (inputDest.matches("")) {
+            // some API call based on their time input and assumptions
+        } else {
+            destinations.add(inputDest);
+        }
+
+        Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
+
+        preferencesIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
+        preferencesIntent.putStringArrayListExtra(Intent.EXTRA_STREAM, destinations);
+        preferencesIntent.setType("possibleDestinations");
+
+        startActivity(preferencesIntent);
+
+        /*Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show(); */
     }
 
 //    public static class TimePickerFragment extends DialogFragment

@@ -31,13 +31,25 @@
 
         <activity
             android:name=".MainActivity"
-            android:label="@string/title_activity_main">
+            android:label="Xplore">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="list/preferences" />
+            </intent-filter>
         </activity>
+
+        <activity
+            android:name=".PreferencesActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+        </activity>
+
         <activity
             android:name=".PlanActivity"
             android:label="@string/title_activity_plan">
