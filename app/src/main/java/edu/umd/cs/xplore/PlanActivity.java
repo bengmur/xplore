@@ -64,14 +64,12 @@ public class PlanActivity extends AppCompatActivity {
     }
 
     public void fabClicked(View view) {
+        // Get duration
         int hours = hourField.getValue();
         int minutes = minuteField.getValue();
-        // TODO: Create intent and send hour and minute values
-        // get text field inputs
-        EditText timeField = (EditText) findViewById(R.id.time_field);
-        EditText destField = (EditText) findViewById(R.id.destination);
 
-        String time = timeField.getText().toString();
+        // Get destination
+        EditText destField = (EditText) findViewById(R.id.destination);
         String inputDest = destField.getText().toString();
 
         // If the user didn't input a dest, create a list of possible destinations
