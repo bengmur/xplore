@@ -7,7 +7,7 @@
     <!-- Plan Trip Activity -->
     <string name="title_activity_plan">Plan Your Trip</string>
     <string name="duration">Trip Duration</string>
-    <string name="duration_hint">6:30</string>
+    <string name="time_separator">:</string>
     <string name="destination">Trip Destination (Optional)</string>
     <string name="destination_hint">e.g., New York City</string>
 </resources>

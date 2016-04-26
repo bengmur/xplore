@@ -10,7 +10,7 @@
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context="com.example.slyryd.xploretest.MainActivity"
+    tools:context="edu.umd.cs.xplore.PlanActivity"
     tools:showIn="@layout/activity_plan">
 
     <TextView
@@ -19,14 +19,42 @@
         android:text="@string/duration"
         android:textSize="18sp" />
 
-    <EditText
-        android:id="@+id/time_field"
-        android:layout_width="match_parent"
+    <!--<EditText-->
+    <!--android:id="@+id/time_field"-->
+    <!--android:layout_width="match_parent"-->
+    <!--android:layout_height="wrap_content"-->
+    <!--android:hint="@string/duration_hint"-->
+    <!--android:inputType="time"-->
+    <!--android:text="@string/duration_hint" />-->
+
+    <LinearLayout
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:hint="@string/duration_hint"
-        android:text="@string/duration_hint"
-        android:inputType="time" />
+        android:layout_marginBottom="@dimen/activity_vertical_margin"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:layout_gravity="center">
+
+        <NumberPicker
+            android:id="@+id/hour_field"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="@dimen/activity_horizontal_margin"
+            android:layout_marginRight="@dimen/activity_horizontal_margin" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/time_separator"
+            android:layout_gravity="center"/>
+
+        <NumberPicker
+            android:id="@+id/minute_field"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="@dimen/activity_horizontal_margin"
+            android:layout_marginRight="@dimen/activity_horizontal_margin" />
+
+    </LinearLayout>
 
     <TextView
         android:layout_width="wrap_content"
