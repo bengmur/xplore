@@ -5,12 +5,14 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
+import android.widget.Toast;
 
 public class LocationTracker extends Service implements LocationListener {
 
@@ -37,8 +39,11 @@ public class LocationTracker extends Service implements LocationListener {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Notification notification = new Notification.Builder(this)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setLargeIcon(BitmapFactory.decodeResource(this.getResources(),
+                        R.mipmap.ic_launcher))
                 .setContentTitle("Xplore (Location Listener)")
-                .setContentText("Xplore (Location listener)")
+                .setContentText("Tracking your current location...")
                 .build();
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
@@ -49,9 +54,9 @@ public class LocationTracker extends Service implements LocationListener {
     }
 
     public void onLocationChanged(Location loc) {
-        Log.d(TAG, loc.toString());
+        Log.d(TAG, "New loc: " + loc.getLatitude() + ", " + loc.getLongitude());
 
-        Intent locBrdIntent = new Intent("edu.umd.cs.xplore");
+        Intent locBrdIntent = new Intent("edu.umd.cs.xplore.LOC_UPDATE");
         locBrdIntent.putExtra("lat", loc.getLatitude());
         locBrdIntent.putExtra("lng", loc.getLongitude());
         sendBroadcast(locBrdIntent);

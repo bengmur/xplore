@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.AsyncTask;
@@ -98,6 +99,10 @@ public class MainActivity extends FragmentActivity implements
         // Use Android Device Monitor (Tools>Android>Android Device Monitor), "emulator control" tab, then manually send
         // coordinates of current location to the device under "Location Controls".
         enableMyLocation();
+
+        // Register broadcast receiver
+        // TODO: add this to onResume() as well
+        registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
 
         // Start loc tracking service
         Intent serviceIntent = new Intent(this, LocationTracker.class);
@@ -196,12 +201,8 @@ public class MainActivity extends FragmentActivity implements
     }
 
     private void drawMovingLoc() {
-        Context context = getApplicationContext();
-        CharSequence text = actualLocations.get(actualLocations.size() - 1).toString();
-        int duration = Toast.LENGTH_LONG;
-
-        Toast toast = Toast.makeText(context, text, duration);
-        toast.show();
+        Toast.makeText(getApplicationContext(),
+                actualLocations.get(actualLocations.size() - 1).toString(), Toast.LENGTH_LONG).show();
     }
 
     private String readStream(InputStream is) {
