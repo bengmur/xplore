@@ -14,12 +14,11 @@ public class PreferenceList {
     }
 
     private Integer[] imageIds = {
-            //TODO Get pictures and insert them here
-            R.drawable.sample_0, R.drawable.sample_1,
-            R.drawable.sample_2, R.drawable.sample_3,
-            R.drawable.sample_4, R.drawable.sample_5,
-            R.drawable.sample_6, R.drawable.sample_7,
-            R.drawable.sample_0, R.drawable.sample_1
+            R.mipmap.museums, R.mipmap.landmarks,
+            R.mipmap.food_drink, R.mipmap.nightlife,
+            R.mipmap.nature_parks, R.mipmap.live_shows,
+            R.mipmap.tours, R.mipmap.zoos_aquariums,
+            R.mipmap.shopping, R.mipmap.events
     };
 
     private String[] preferenceTags = {

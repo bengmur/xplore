@@ -10,4 +10,7 @@
     <string name="duration_hint">6:30</string>
     <string name="destination">Trip Destination (Optional)</string>
     <string name="destination_hint">e.g., New York City</string>
+
+    <!-- Preferences Activity -->
+    <string name="change_destination">Change Destination</string>
 </resources>
