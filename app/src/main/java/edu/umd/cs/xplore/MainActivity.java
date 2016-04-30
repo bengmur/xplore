@@ -1,6 +1,7 @@
 package edu.umd.cs.xplore;
 
 import android.Manifest;
+import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -48,14 +49,22 @@ public class MainActivity extends FragmentActivity implements
     private GoogleMap mMap;
 
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
+    private ArrayList<LatLng> newLocs;
+
     private BroadcastReceiver locationReceiver = new BroadcastReceiver() {
 
         @Override
         public void onReceive(Context context, Intent intent) {
             Bundle bundle = intent.getExtras();
             if (bundle != null) {
-                actualLocations.add(new LatLng(bundle.getDouble("lat"),
-                        bundle.getDouble("lng")));
+                //TODO: This can probably be optimized
+                newLocs = new ArrayList<LatLng>();
+
+                if (actualLocations.size() > 0) {
+                    newLocs.add(actualLocations.get(actualLocations.size() - 1));
+                }
+                newLocs.addAll((ArrayList<LatLng>)bundle.get("locs"));
+                actualLocations.addAll((ArrayList<LatLng>)bundle.get("locs"));
 
                 drawMovingLoc();
             }
@@ -81,6 +90,52 @@ public class MainActivity extends FragmentActivity implements
         });
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        // Send broadcast that activity is starting and needs ALL locations from a previously started
+        // service (if Activity was started earlier)
+        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
+        activityStatusIntent.putExtra("stopStatus", false);
+        sendBroadcast(activityStatusIntent);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Register broadcast receiver for location updates
+        registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
+
+        // Send broadcast that activity is ready to receive location updates
+        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
+        activityStatusIntent.putExtra("pauseStatus", false);
+        sendBroadcast(activityStatusIntent);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        // Send broadcast that activity is not able to receive location updates
+        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
+        activityStatusIntent.putExtra("pauseStatus", true);
+        sendBroadcast(activityStatusIntent);
+
+        // Unregister broadcast receiver for location updates (in case Activity is stopped)
+        unregisterReceiver(locationReceiver);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        // Send broadcast that activity is stopping and will need ALL locations resent when started
+        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
+        activityStatusIntent.putExtra("stopStatus", true);
+        sendBroadcast(activityStatusIntent);
+    }
 
     /**
      * Manipulates the map once available.
@@ -101,12 +156,15 @@ public class MainActivity extends FragmentActivity implements
         enableMyLocation();
 
         // Register broadcast receiver
-        // TODO: add this to onResume() as well
         registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
 
-        // Start loc tracking service
-        Intent serviceIntent = new Intent(this, LocationTracker.class);
-        startService(serviceIntent);
+        // Start loc tracking service if not yet running
+        if (!isMyServiceRunning(LocationTracker.class)) {
+            Intent serviceIntent = new Intent(this, LocationTracker.class);
+            startService(serviceIntent);
+        }
+
+
 
         // Sample addresses for testing prior to integration with actual initial places
         // These can be addresses, precise location names, etc. (anything that Google Maps can find the *correct* coordinates for)
@@ -201,8 +259,10 @@ public class MainActivity extends FragmentActivity implements
     }
 
     private void drawMovingLoc() {
-        Toast.makeText(getApplicationContext(),
-                actualLocations.get(actualLocations.size() - 1).toString(), Toast.LENGTH_LONG).show();
+            Polyline line = mMap.addPolyline(new PolylineOptions()
+                    .addAll(newLocs)
+                    .width(20)
+                    .color(Color.RED));
     }
 
     private String readStream(InputStream is) {
@@ -251,4 +311,14 @@ public class MainActivity extends FragmentActivity implements
         }
     }
 
+    // Source: http://stackoverflow.com/questions/600207/how-to-check-if-a-service-is-running-on-android
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
