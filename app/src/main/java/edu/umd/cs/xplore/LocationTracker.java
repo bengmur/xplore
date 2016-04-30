@@ -41,13 +41,22 @@ public class LocationTracker extends Service implements LocationListener {
         public void onReceive(Context context, Intent intent) {
             if (intent.hasExtra("pauseStatus")) {
                 activityPaused = intent.getExtras().getBoolean("pauseStatus");
+
+                if (activityPaused) {
+                    Log.d(TAG, "Activity paused");
+                } else {
+                    Log.d(TAG, "Activity resumed");
+                }
             }
 
             if (intent.hasExtra("stopStatus")) {
                 activityStopped = intent.getExtras().getBoolean("stopStatus");
 
                 if (activityStopped == false) {
+                    Log.d(TAG, "Activity started");
                     resendAllLocs = true;
+                } else {
+                    Log.d(TAG, "Activity stopped");
                 }
             }
         }
@@ -94,6 +103,7 @@ public class LocationTracker extends Service implements LocationListener {
         allLocs.add(new LatLng(loc.getLatitude(), loc.getLongitude()));
 
         if (resendAllLocs) {
+            Log.d(TAG, "Resending all locations..");
             Intent locBrdIntent = new Intent("edu.umd.cs.xplore.LOC_UPDATE");
             locBrdIntent.putExtra("locs", allLocs);
             sendBroadcast(locBrdIntent);
@@ -101,6 +111,7 @@ public class LocationTracker extends Service implements LocationListener {
             locationUpdates.clear(); // clear updates since they're included in the "allLocs" list
             resendAllLocs = false;
         } else if (!activityPaused && !activityStopped) {
+            Log.d(TAG, "Sending location updates..");
             Intent locBrdIntent = new Intent("edu.umd.cs.xplore.LOC_UPDATE");
             locBrdIntent.putExtra("locs", locationUpdates);
             sendBroadcast(locBrdIntent);
