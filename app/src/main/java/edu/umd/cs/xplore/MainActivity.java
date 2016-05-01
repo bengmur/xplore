@@ -38,6 +38,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -47,6 +48,7 @@ public class MainActivity extends FragmentActivity implements
         ActivityCompat.OnRequestPermissionsResultCallback {
 
     private GoogleMap mMap;
+    private HashSet<String> selectedPreferences;
 
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
@@ -88,6 +90,20 @@ public class MainActivity extends FragmentActivity implements
                 startActivity(intent);
             }
         });
+
+        // Check for an Intent from PreferencesActivity
+        Intent intent = getIntent();
+        String action = intent.getAction();
+        String type = intent.getType();
+        if (Intent.ACTION_SEND.equals(action) && type != null) {
+            if ("list/preferences".equals(type)) {
+                handleSendPreferences(intent);
+            } else {
+                //TODO Handle other intents
+            }
+        } else {
+            //TODO Handle other intents
+        }
     }
 
     @Override
@@ -164,8 +180,6 @@ public class MainActivity extends FragmentActivity implements
             startService(serviceIntent);
         }
 
-
-
         // Sample addresses for testing prior to integration with actual initial places
         // These can be addresses, precise location names, etc. (anything that Google Maps can find the *correct* coordinates for)
         // TODO: use current location for start/end points
@@ -179,6 +193,13 @@ public class MainActivity extends FragmentActivity implements
         DirectionsAsyncTask routePolylineDrawer = new DirectionsAsyncTask();
         routePolylineDrawer.execute(addrSamples);
 
+    }
+
+    // Store HashSet containing preferences sent from PreferencesActivity
+    private void handleSendPreferences(Intent intent) {
+        selectedPreferences =
+                (HashSet<String>) intent.getSerializableExtra(PreferencesActivity.SELECTED_PREFERENCES);
+        Toast.makeText(this, selectedPreferences.toString(), Toast.LENGTH_LONG).show();
     }
 
     private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
