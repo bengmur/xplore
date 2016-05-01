@@ -10,4 +10,7 @@
     <string name="time_separator">:</string>
     <string name="destination">Trip Destination (Optional)</string>
     <string name="destination_hint">e.g., New York City</string>
+    <string name="geonames_username">xplore</string>
+    <string name="geonames_country">US</string>
+
 </resources>
