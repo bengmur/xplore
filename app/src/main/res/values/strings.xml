@@ -13,6 +13,7 @@
     <string name="destination_hint">e.g., New York City</string>
     <string name="geonames_username">xplore</string>
     <string name="geonames_country">US</string>
+    <string name="geonames_min_population">cities15000</string>
 
     <!-- Preferences Activity -->
     <string name="change_destination">Change Destination</string>
