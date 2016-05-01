@@ -1,13 +1,17 @@
 package edu.umd.cs.xplore;
 
 import android.Manifest;
+import android.app.ActivityManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.view.View;
@@ -33,15 +37,41 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
 
-public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MainActivity extends FragmentActivity implements
+        OnMapReadyCallback,
+        ActivityCompat.OnRequestPermissionsResultCallback {
 
     private GoogleMap mMap;
     private HashSet<String> selectedPreferences;
+
+    private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
+    private ArrayList<LatLng> newLocs;
+
+    private BroadcastReceiver locationReceiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Bundle bundle = intent.getExtras();
+            if (bundle != null) {
+                //TODO: This can probably be optimized
+                newLocs = new ArrayList<LatLng>();
+
+                if (actualLocations.size() > 0) {
+                    newLocs.add(actualLocations.get(actualLocations.size() - 1));
+                }
+                newLocs.addAll((ArrayList<LatLng>)bundle.get("locs"));
+                actualLocations.addAll((ArrayList<LatLng>)bundle.get("locs"));
+
+                drawMovingLoc();
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,6 +106,53 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        // Send broadcast that activity is starting and needs ALL locations from a previously started
+        // service (if Activity was started earlier)
+        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
+        activityStatusIntent.putExtra("stopStatus", false);
+        sendBroadcast(activityStatusIntent);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Register broadcast receiver for location updates
+        registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
+
+        // Send broadcast that activity is ready to receive location updates
+        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
+        activityStatusIntent.putExtra("pauseStatus", false);
+        sendBroadcast(activityStatusIntent);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        // Send broadcast that activity is not able to receive location updates
+        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
+        activityStatusIntent.putExtra("pauseStatus", true);
+        sendBroadcast(activityStatusIntent);
+
+        // Unregister broadcast receiver for location updates (in case Activity is stopped)
+        unregisterReceiver(locationReceiver);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        // Send broadcast that activity is stopping and will need ALL locations re-sent when started
+        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
+        activityStatusIntent.putExtra("stopStatus", true);
+        sendBroadcast(activityStatusIntent);
+    }
+
     /**
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
@@ -90,22 +167,17 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mMap = googleMap;
 
         // Enable showing user's location on map (blue dot/center on current location control)
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
-            mMap.setMyLocationEnabled(true);
-        } else {
-            // TODO: request user permission if disabled and explain rationale for why it's needed here
-            // For debugging prior to this implementation: Settings>Apps>Xplore>Permissions, then enable Location
+        // Use Android Device Monitor (Tools>Android>Android Device Monitor), "emulator control" tab, then manually send
+        // coordinates of current location to the device under "Location Controls".
+        enableMyLocation();
 
-            // Use Android Device Monitor (Tools>Android>Android Device Monitor), "emulator control" tab, then manually send
-            // coordinates of current location to the device under "Location Controls".
+        // Register broadcast receiver
+        registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
 
-            Context context = getApplicationContext();
-            CharSequence text = "Location permission disabled; see comments in code on how to enable and manually send location to AVD";
-            int duration = Toast.LENGTH_LONG;
-
-            Toast toast = Toast.makeText(context, text, duration);
-            toast.show();
+        // Start loc tracking service if not yet running
+        if (!isMyServiceRunning(LocationTracker.class)) {
+            Intent serviceIntent = new Intent(this, LocationTracker.class);
+            startService(serviceIntent);
         }
 
         // Sample addresses for testing prior to integration with actual initial places
@@ -207,6 +279,13 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    private void drawMovingLoc() {
+            Polyline line = mMap.addPolyline(new PolylineOptions()
+                    .addAll(newLocs)
+                    .width(20)
+                    .color(Color.RED));
+    }
+
     private String readStream(InputStream is) {
         try {
             ByteArrayOutputStream bo = new ByteArrayOutputStream();
@@ -219,5 +298,48 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         } catch (IOException e) {
             return "";
         }
+    }
+
+    private void enableMyLocation() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+        } else {
+            mMap.setMyLocationEnabled(true);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case 0: { // ACCESS_FINE_LOCATION case
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    enableMyLocation();
+                } else {
+                    // permission denied: quit app (location is vital to usage..)
+                    // TODO: handle this more cleanly instead of just exiting out
+                    finish();
+                }
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request
+        }
+    }
+
+    // Source: http://stackoverflow.com/questions/600207/how-to-check-if-a-service-is-running-on-android
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
