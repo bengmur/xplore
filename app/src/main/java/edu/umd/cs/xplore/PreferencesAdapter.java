@@ -1,6 +1,10 @@
 package edu.umd.cs.xplore;
 
 import android.content.Context;
+import android.content.res.TypedArray;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -50,8 +54,8 @@ public class PreferencesAdapter extends BaseAdapter {
         if (convertView == null) {
             // if it is not recycled, initialize some attributes
             prefCardView = new CardView(prefContext);
-            prefCardView.setLayoutParams(new GridView.LayoutParams(650, 650));
-            prefCardView.setContentPadding(10, 10, 10, 10);
+            prefCardView.setLayoutParams(new GridView.LayoutParams(300, 300));
+            prefCardView.setCardBackgroundColor(Color.WHITE);
 
             LayoutInflater layoutInflater =
                     (LayoutInflater) prefContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -69,6 +73,7 @@ public class PreferencesAdapter extends BaseAdapter {
 
         curImageView.setImageResource(prefList.getImageId(position));
         curTextView.setText(prefList.getPreferenceTitle(position));
+        curTextView.setTextColor(Color.BLACK);
 
         return prefCardView;
     }
