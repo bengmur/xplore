@@ -122,29 +122,17 @@ public class PlanActivity extends AppCompatActivity {
                         this time. Each LatLng coordinate is 2 consecutive elements, one for Lat and one
                         for Long. Use the Geonames service in an AsyncTask to find the name of
                         each calculated location. */
-            Double[] coordinates = {currLat + latDelta, currLong,
-                    currLat - latDelta, currLong,
-                    currLat, currLong + longDelta,
-                    currLat, currLong - longDelta};
+            String[] coordinates = {Double.toString(currLat + latDelta), Double.toString(currLong),
+                    Double.toString(currLat - latDelta), Double.toString(currLong),
+                    Double.toString(currLat), Double.toString(currLong + longDelta),
+                    Double.toString(currLat), Double.toString(currLong - longDelta)};
 
             // List to store results from Geonames.
             ArrayList<String> destinations = new ArrayList<String>();
 
-            for (int i = 0; i < coordinates.length; i += 2) {
-                // TODO: should we wait for these tasks to finish before going on to the prerences activity?
-                FindLocationName findName = new FindLocationName(destinations);
-                findName.execute(Double.toString(coordinates[i]), Double.toString(coordinates[i + 1]));
-            }
-
-            // Start preferences activity, while passing down destinations data
-            Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
-
-            preferencesIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
-            preferencesIntent.putStringArrayListExtra(Intent.EXTRA_STREAM, (ArrayList<String>) destinations);
-            preferencesIntent.setType("possibleDestinations");
-
-            startActivity(preferencesIntent);
-
+            // Start async task to find possible destinations
+            FindLocationName findName = new FindLocationName(destinations);
+            findName.execute(coordinates);
         } else {
             // Verify that input destination is a valid location and create list
             DestInputVerifyTask verifyTask = new DestInputVerifyTask();
@@ -215,7 +203,7 @@ public class PlanActivity extends AppCompatActivity {
         }
     }
 
-    private class FindLocationName extends AsyncTask<String, Void, String> {
+    private class FindLocationName extends AsyncTask<String, Void, String[]> {
 
         private List<String> destinations;
 
@@ -224,42 +212,67 @@ public class PlanActivity extends AppCompatActivity {
         }
 
         @Override
-        protected String doInBackground(String... params) {
+        protected String[] doInBackground(String... params) {
             try {
-                StringBuilder urlStringBuilder = new StringBuilder();
-                urlStringBuilder.append("http://api.geonames.org/findNearbyPlaceNameJSON?lat=");
-                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
-                urlStringBuilder.append("&lng=");
-                urlStringBuilder.append(URLEncoder.encode(params[1], "UTF-8"));
-                urlStringBuilder.append("&cities="); // location should have min population of 15000
-                urlStringBuilder.append(URLEncoder.encode(getString(R.string.geonames_min_population), "UTF-8"));
-                urlStringBuilder.append("&username=");
-                urlStringBuilder.append(URLEncoder.encode(getString(R.string.geonames_username), "UTF-8"));
+                InputStream[] inputStreams = new InputStream[4];
+                HttpURLConnection[] urlConnections = new HttpURLConnection[4];
 
-                URL reqURL = new URL(urlStringBuilder.toString());
-                HttpURLConnection urlConnection = (HttpURLConnection) reqURL.openConnection();
-                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-                String queryResponse = readStream(in);
+                for (int i = 0; i < params.length; i += 2) {
+                    StringBuilder urlStringBuilder = new StringBuilder();
+                    urlStringBuilder.append("http://api.geonames.org/findNearbyPlaceNameJSON?lat=");
+                    urlStringBuilder.append(URLEncoder.encode(params[i], "UTF-8"));
+                    urlStringBuilder.append("&lng=");
+                    urlStringBuilder.append(URLEncoder.encode(params[i + 1], "UTF-8"));
+                    urlStringBuilder.append("&cities="); // location should have min population of 15000
+                    urlStringBuilder.append(URLEncoder.encode(getString(R.string.geonames_min_population), "UTF-8"));
+                    urlStringBuilder.append("&username=");
+                    urlStringBuilder.append(URLEncoder.encode(getString(R.string.geonames_username), "UTF-8"));
 
-                urlConnection.disconnect(); // TODO: put this in a "finally" block
+                    URL reqURL = new URL(urlStringBuilder.toString());
+                    HttpURLConnection urlConnection = (HttpURLConnection) reqURL.openConnection();
+                    urlConnections[i/2] = urlConnection;
 
-                return queryResponse;
+                    inputStreams[i/2] = new BufferedInputStream(urlConnection.getInputStream());
+                }
+
+                String[] queryResponses = new String[4];
+
+                // Get results from each URL connection
+                for (int i = 0; i < queryResponses.length; i++) {
+                    queryResponses[i] = readStream(inputStreams[i]);
+                    // Disconnect each url as well
+                    urlConnections[i].disconnect(); // TODO: put this in a "finally" block
+                }
+
+                return queryResponses;
             } catch (Exception e) {
                 // TODO: handle errors; particularly an error resulting from no internet access
-                return "";
+                String[] toRet = {""};
+                return toRet;
             }
         }
 
         @Override
-        protected void onPostExecute(String result) {
+        protected void onPostExecute(String[] results) {
             try {
                 // parse request result into JSON object
-                JSONObject nameQueryResult = new JSONObject(result);
+                for (String result: results) {
+                    JSONObject nameQueryResult = new JSONObject(result);
 
-                // get the name of the location from the JSON object and add it to ArrayList
-                JSONObject location = nameQueryResult.getJSONArray("geonames").getJSONObject(0);
-                destinations.add(location.get("name").toString());
-                Log.i(TAG, location.get("name").toString());
+                    // get the name of the location from the JSON object and add it to ArrayList
+                    JSONObject location = nameQueryResult.getJSONArray("geonames").getJSONObject(0);
+                    destinations.add(location.get("name").toString());
+                    Log.i(TAG, location.get("name").toString());
+                }
+
+                // Start preferences activity, while passing down destinations data
+                Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
+
+                preferencesIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
+                preferencesIntent.putStringArrayListExtra(Intent.EXTRA_STREAM, (ArrayList<String>) destinations);
+                preferencesIntent.setType("possibleDestinations");
+
+                startActivity(preferencesIntent);
             } catch (Exception e) {
                 // TODO: handle errors
             }
