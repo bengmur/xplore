@@ -226,12 +226,13 @@ public class PlanActivity extends AppCompatActivity {
         @Override
         protected String doInBackground(String... params) {
             try {
-                //
                 StringBuilder urlStringBuilder = new StringBuilder();
                 urlStringBuilder.append("http://api.geonames.org/findNearbyPlaceNameJSON?lat=");
                 urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
                 urlStringBuilder.append("&lng=");
                 urlStringBuilder.append(URLEncoder.encode(params[1], "UTF-8"));
+                urlStringBuilder.append("&cities="); // location should have min population of 15000
+                urlStringBuilder.append(URLEncoder.encode(getString(R.string.geonames_min_population), "UTF-8"));
                 urlStringBuilder.append("&username=");
                 urlStringBuilder.append(URLEncoder.encode(getString(R.string.geonames_username), "UTF-8"));
 
