@@ -131,7 +131,7 @@ public class MainActivity extends FragmentActivity implements
     protected void onStop() {
         super.onStop();
 
-        // Send broadcast that activity is stopping and will need ALL locations resent when started
+        // Send broadcast that activity is stopping and will need ALL locations re-sent when started
         Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
         activityStatusIntent.putExtra("stopStatus", true);
         sendBroadcast(activityStatusIntent);
