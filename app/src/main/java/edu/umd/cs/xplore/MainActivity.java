@@ -40,6 +40,7 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -49,9 +50,11 @@ public class MainActivity extends FragmentActivity implements
 
     private GoogleMap mMap;
     private HashSet<String> selectedPreferences;
+    private String destination;
 
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
+    private ArrayList<String> placesList = new ArrayList<String>();
 
     private BroadcastReceiver locationReceiver = new BroadcastReceiver() {
 
@@ -95,7 +98,7 @@ public class MainActivity extends FragmentActivity implements
         Intent intent = getIntent();
         String action = intent.getAction();
         String type = intent.getType();
-        if (Intent.ACTION_SEND.equals(action) && type != null) {
+        if (Intent.ACTION_SEND_MULTIPLE.equals(action) && type != null) {
             if ("list/preferences".equals(type)) {
                 handleSendPreferences(intent);
             } else {
@@ -199,7 +202,59 @@ public class MainActivity extends FragmentActivity implements
     private void handleSendPreferences(Intent intent) {
         selectedPreferences =
                 (HashSet<String>) intent.getSerializableExtra(PreferencesActivity.SELECTED_PREFERENCES);
-        Toast.makeText(this, selectedPreferences.toString(), Toast.LENGTH_LONG).show();
+        destination = (String) intent.getStringExtra(PreferencesActivity.DESTINATION);
+
+        Toast.makeText(this, selectedPreferences.toString(), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, destination, Toast.LENGTH_SHORT).show();
+
+        // TESTING with these params
+        String[] params = {"Boston", "restaurant"};
+        PlacesAsyncTask placesFinder = new PlacesAsyncTask();
+        placesFinder.execute(params);
+    }
+
+    private class PlacesAsyncTask extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected String doInBackground(String... params) {
+            String places = "";
+            try {
+                StringBuilder urlStringBuilder = new StringBuilder();
+                urlStringBuilder.append("https://maps.googlesapis.com/maps/apis/place/textsearch/json?query=");
+                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
+                urlStringBuilder.append("&key=AIzaSyCj26mWanXxW2b9o1JfB12RpaGfFDBEQcU");
+                urlStringBuilder.append("&type=");
+                urlStringBuilder.append(URLEncoder.encode(params[1], "UTF-8"));
+
+                URL reqURL = new URL(urlStringBuilder.toString());
+                HttpsURLConnection urlConnection = (HttpsURLConnection) reqURL.openConnection();
+                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                places = readStream(in);
+                urlConnection.disconnect();
+            } catch (Exception e) {
+                // TODO: handle errors
+                return places;
+            } finally {
+                return places;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            try {
+                // parse request result into JSON object
+                JSONObject placesResult = new JSONObject(result);
+
+                JSONArray places = placesResult.getJSONArray("results");
+                for (int i = 0; i < places.length(); i++) {
+                    placesList.add(places.getJSONObject(i).getString("name"));
+                }
+
+            } catch (Exception e) {
+                //TODO handle errors
+            }
+        }
+
     }
 
     private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {

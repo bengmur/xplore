@@ -15,7 +15,6 @@ import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,6 +30,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
     private PreferenceList prefList = PreferenceList.getInstance();
     private HashSet<String> selectedPreferences = new HashSet<String>();
     static final String SELECTED_PREFERENCES = "edu.umd.cs.xplore.SELECTED_PREFERENCES";
+    static final String DESTINATION = "edu.umd.cs.xplore.DESTINATION";
     static final String PREFERENCE_TITLE = "What are your interests?";
 
     public void onCreate(Bundle savedInstanceState) {
@@ -70,8 +70,9 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
             public void onClick(View view) {
                 Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                intent.setAction(Intent.ACTION_SEND);
+                intent.setAction(Intent.ACTION_SEND_MULTIPLE);
                 intent.putExtra(SELECTED_PREFERENCES, selectedPreferences);
+                intent.putExtra(DESTINATION, curDestination);
                 intent.setType("list/preferences");
                 startActivity(intent);
             }
