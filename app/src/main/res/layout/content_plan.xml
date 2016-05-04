@@ -75,14 +75,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
-    <ProgressBar
+
+    <!--<ProgressBar
         style="@style/Base.Widget.AppCompat.ProgressBar.Horizontal"
         android:id="@+id/findLocationsProgressBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="invisible"
         android:indeterminate="false"
-        android:max="100"/>
+        android:max="100"/> -->
 
     <!--<TextView-->
         <!--android:id="@+id/txt_place_details"-->

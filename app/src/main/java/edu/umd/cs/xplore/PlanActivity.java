@@ -1,5 +1,6 @@
 package edu.umd.cs.xplore;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -36,7 +37,8 @@ public class PlanActivity extends AppCompatActivity {
     private NumberPicker minuteField;
     private PlaceAutocompleteFragment autocompleteFragment;
     private Place destination = null;
-    private ProgressBar findLocationsProgressBar;
+    //private ProgressBar findLocationsProgressBar;
+    private ProgressDialog findLocationsProgressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +89,11 @@ public class PlanActivity extends AppCompatActivity {
         // autocompleteFragment.setBoundsBias(new LatLngBounds(
         //         new LatLng(-33.880490, 151.184363),
         //         new LatLng(-33.858754, 151.229596)));
+
+        findLocationsProgressDialog = new ProgressDialog(this);
+        findLocationsProgressDialog.setTitle("Finding Locations");
+        findLocationsProgressDialog.setMessage("Finding destinations for you to explore");
+        findLocationsProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
     }
 
     public void fabClicked(View view) {
@@ -161,8 +168,7 @@ public class PlanActivity extends AppCompatActivity {
 
         @Override
         protected void onPreExecute() {
-            findLocationsProgressBar = (ProgressBar) findViewById(R.id.findLocationsProgressBar);
-            findLocationsProgressBar.setVisibility(LinearLayout.VISIBLE);
+            findLocationsProgressDialog.show();
         }
 
         @Override
@@ -194,7 +200,6 @@ public class PlanActivity extends AppCompatActivity {
                 // Get results from each URL connection
                 for (int i = 0; i < queryResponses.length; i++) {
                     queryResponses[i] = readStream(inputStreams[i]);
-                    publishProgress(i);
                     // Disconnect each url as well
                     urlConnections[i].disconnect(); // TODO: put this in a "finally" block
 
@@ -206,10 +211,6 @@ public class PlanActivity extends AppCompatActivity {
                 String[] toRet = {""};
                 return toRet;
             }
-        }
-
-        protected void onProgressUpdate(Integer progress) {
-            findLocationsProgressBar.setProgress((progress + 1) * 25);
         }
 
         @Override
@@ -226,7 +227,7 @@ public class PlanActivity extends AppCompatActivity {
                 }
 
                 // Close progress bar
-                findLocationsProgressBar.setVisibility(View.INVISIBLE);
+                findLocationsProgressDialog.hide();
 
                 // Start preferences activity, while passing down destinations data
                 Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
