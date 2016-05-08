@@ -8,6 +8,7 @@
     <string name="title_activity_plan">Plan Your Trip</string>
     <string name="duration">Trip Duration</string>
     <string name="duration_hint">6:30</string>
+    <string name="time_separator">:</string>
     <string name="destination">Trip Destination (Optional)</string>
     <string name="destination_hint">e.g., New York City</string>
     <string name="deleted">DELETED</string>
@@ -15,6 +16,10 @@
     <string name="places_title">PLACES TO VISIT</string>
     <string name="geonames_username">xplore</string>
     <string name="geonames_country">US</string>
+    <string name="geonames_min_population">cities15000</string>
+
+    <!-- Preferences Activity -->
+    <string name="change_destination">Change Destination</string>
 
 >>>>>>> dev
 </resources>
