@@ -13,4 +13,8 @@
     <string name="deleted">DELETED</string>
     <string name="undo">UNDO</string>
     <string name="places_title">PLACES TO VISIT</string>
+    <string name="geonames_username">xplore</string>
+    <string name="geonames_country">US</string>
+
+>>>>>>> dev
 </resources>
