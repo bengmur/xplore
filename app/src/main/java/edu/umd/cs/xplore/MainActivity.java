@@ -58,8 +58,11 @@ public class MainActivity extends FragmentActivity implements
     private BottomSheetBehavior mBottomSheetBehavior;
     private RecyclerView recyclerView;
     private static final List<String> adjectives = new ArrayList<>(Arrays.asList(new String[]{
-            "Awesome", "Peculiar", "Green", "Sad", "Gross", "Lovely", "Insane",
-            "Compostable", "Blue", "Wooden", "Grotesque", "Beautiful"}));
+            "museums", "landmarks", "food_drink",
+            "nightlife", "nature_parks", "live_shows",
+            "tours", "zoos_aquariums", "shopping",
+            "events"
+    }));
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
 
@@ -103,7 +106,7 @@ public class MainActivity extends FragmentActivity implements
 
         View bottomSheet = findViewById( R.id.bottom_sheet );
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
-        mBottomSheetBehavior.setPeekHeight(300);
+        mBottomSheetBehavior.setPeekHeight(250);
 
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
         recyclerView.setAdapter(new RecyclerViewStringListAdapter(adjectives));

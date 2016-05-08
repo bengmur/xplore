@@ -11,6 +11,8 @@ import java.util.List;
 
 public class RecyclerViewStringListAdapter extends RecyclerView.Adapter {
 
+    private PreferenceList prefList = PreferenceList.getInstance();
+
     protected class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivImage;
         TextView tvText;
@@ -43,6 +45,8 @@ public class RecyclerViewStringListAdapter extends RecyclerView.Adapter {
     @Override
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
         ViewHolder myViewHolder = (ViewHolder)holder;
-        myViewHolder.tvText.setText((String)strings.get(position));
+        myViewHolder.tvText.setText((String) strings.get(position));
+//        int imagePos = prefList.getImageId();
+        myViewHolder.ivImage.setImageResource(prefList.getImageId(position));
     }
 }
