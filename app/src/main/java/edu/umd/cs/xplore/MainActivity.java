@@ -14,8 +14,8 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.view.View;
-import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -38,6 +38,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -47,8 +48,11 @@ public class MainActivity extends FragmentActivity implements
         OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
 
+    private static final String TAG = "MainActivity";
+
     private GoogleMap mMap;
     private HashSet<String> selectedPreferences;
+    private HashMap<String, ArrayList<String>> itinerary;
 
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
@@ -199,91 +203,17 @@ public class MainActivity extends FragmentActivity implements
     private void handleSendPreferences(Intent intent) {
         selectedPreferences =
                 (HashSet<String>) intent.getSerializableExtra(PreferencesActivity.SELECTED_PREFERENCES);
-        Toast.makeText(this, selectedPreferences.toString(), Toast.LENGTH_LONG).show();
-    }
-
-    private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
-
-        @Override
-        protected String doInBackground(String... params) {
-            try {
-                StringBuilder urlStringBuilder = new StringBuilder();
-                urlStringBuilder.append("https://maps.googleapis.com/maps/api/directions/json?origin=");
-                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
-                urlStringBuilder.append("&destination=");
-                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
-                urlStringBuilder.append("&waypoints=");
-
-                // ignore initial origin, which is also final destination, so start iterating at i = 1
-                // ignore final waypoint to omit final separating "|" character, so end at prior to last element
-                for (int i = 1; i < params.length - 1; i++) {
-                    urlStringBuilder.append(URLEncoder.encode(params[i] + "|", "UTF-8"));
-                }
-                urlStringBuilder.append(URLEncoder.encode(params[params.length - 1], "UTF-8"));
-
-                URL reqURL = new URL(urlStringBuilder.toString());
-                HttpsURLConnection urlConnection = (HttpsURLConnection) reqURL.openConnection();
-                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-                String queryResponse = readStream(in);
-                urlConnection.disconnect(); // TODO: put this in a "finally" block
-
-            return queryResponse;
-            } catch (Exception e) {
-                // TODO: handle errors; particularly an error resulting from no internet access
-                return "";
-            }
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            try {
-                // parse request result into JSON object
-                JSONObject directionsResult = new JSONObject(result);
-
-                // using first route by default, since Google's navigation intents don't allow specifying waypoints
-                JSONArray routeLegs = directionsResult.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
-
-                for (int i = 0; i < routeLegs.length(); i++) {
-                    JSONObject currLeg = routeLegs.getJSONObject(i);
-
-                    // Add a marker on start location of current leg
-                    JSONObject startLocJSON = currLeg.getJSONObject("start_location");
-                    LatLng startLocLatLng = new LatLng(startLocJSON.getDouble("lat"), startLocJSON.getDouble("lng"));
-                    //TODO: Change marker name to actual location name, add icon property too maybe?
-                    mMap.addMarker(new MarkerOptions().position(startLocLatLng).title("Chipotle").snippet(currLeg.getString("start_address")));
-
-                    // Draw PolyLine for each step in the leg
-                    // TODO: Store PolyLines so color can be modified as user progresses along journey
-                    JSONArray currLegSteps = currLeg.getJSONArray("steps");
-                    for (int j = 0; j < currLegSteps.length(); j++) {
-                        String encodedPolyline = currLegSteps.getJSONObject(j).getJSONObject("polyline").getString("points");
-                        List<LatLng> pointsList = PolyUtil.decode(encodedPolyline);
-
-                        Polyline line = mMap.addPolyline(new PolylineOptions()
-                                .addAll(pointsList)
-                                .width(20)
-                                .color(Color.CYAN));
-                    }
-                }
-
-                // center camera on entire route bounds (position & zoom)
-                JSONObject routeBounds = directionsResult.getJSONArray("routes").getJSONObject(0).getJSONObject("bounds");
-                LatLng southwestBound = new LatLng(routeBounds.getJSONObject("southwest").getDouble("lat"),
-                        routeBounds.getJSONObject("southwest").getDouble("lng"));
-                LatLng northeastBound = new LatLng(routeBounds.getJSONObject("northeast").getDouble("lat"),
-                        routeBounds.getJSONObject("northeast").getDouble("lng"));
-                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(new LatLngBounds(southwestBound, northeastBound), 50));
-            } catch (Exception e) {
-                // TODO: handle errors
-            }
+        itinerary = (HashMap<String, ArrayList<String>>) intent.getSerializableExtra(PreferencesActivity.ITINERARY);
+        for (String preference : itinerary.keySet()) {
+            Log.i(TAG, preference + " -> " + itinerary.get(preference));
         }
     }
 
     private void drawMovingLoc() {
-            Polyline line = mMap.addPolyline(new PolylineOptions()
-                    .addAll(newLocs)
-                    .width(20)
-                    .color(Color.RED));
+        Polyline line = mMap.addPolyline(new PolylineOptions()
+                .addAll(newLocs)
+                .width(20)
+                .color(Color.RED));
     }
 
     private String readStream(InputStream is) {
@@ -341,5 +271,82 @@ public class MainActivity extends FragmentActivity implements
             }
         }
         return false;
+    }
+
+    private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected String doInBackground(String... params) {
+            try {
+                StringBuilder urlStringBuilder = new StringBuilder();
+                urlStringBuilder.append("https://maps.googleapis.com/maps/api/directions/json?origin=");
+                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
+                urlStringBuilder.append("&destination=");
+                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
+                urlStringBuilder.append("&waypoints=");
+
+                // ignore initial origin, which is also final destination, so start iterating at i = 1
+                // ignore final waypoint to omit final separating "|" character, so end at prior to last element
+                for (int i = 1; i < params.length - 1; i++) {
+                    urlStringBuilder.append(URLEncoder.encode(params[i] + "|", "UTF-8"));
+                }
+                urlStringBuilder.append(URLEncoder.encode(params[params.length - 1], "UTF-8"));
+
+                URL reqURL = new URL(urlStringBuilder.toString());
+                HttpsURLConnection urlConnection = (HttpsURLConnection) reqURL.openConnection();
+                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                String queryResponse = readStream(in);
+                urlConnection.disconnect(); // TODO: put this in a "finally" block
+
+                return queryResponse;
+            } catch (Exception e) {
+                // TODO: handle errors; particularly an error resulting from no internet access
+                return "";
+            }
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            try {
+                // parse request result into JSON object
+                JSONObject directionsResult = new JSONObject(result);
+
+                // using first route by default, since Google's navigation intents don't allow specifying waypoints
+                JSONArray routeLegs = directionsResult.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
+
+                for (int i = 0; i < routeLegs.length(); i++) {
+                    JSONObject currLeg = routeLegs.getJSONObject(i);
+
+                    // Add a marker on start location of current leg
+                    JSONObject startLocJSON = currLeg.getJSONObject("start_location");
+                    LatLng startLocLatLng = new LatLng(startLocJSON.getDouble("lat"), startLocJSON.getDouble("lng"));
+                    //TODO: Change marker name to actual location name, add icon property too maybe?
+                    mMap.addMarker(new MarkerOptions().position(startLocLatLng).title("Chipotle").snippet(currLeg.getString("start_address")));
+
+                    // Draw PolyLine for each step in the leg
+                    // TODO: Store PolyLines so color can be modified as user progresses along journey
+                    JSONArray currLegSteps = currLeg.getJSONArray("steps");
+                    for (int j = 0; j < currLegSteps.length(); j++) {
+                        String encodedPolyline = currLegSteps.getJSONObject(j).getJSONObject("polyline").getString("points");
+                        List<LatLng> pointsList = PolyUtil.decode(encodedPolyline);
+
+                        Polyline line = mMap.addPolyline(new PolylineOptions()
+                                .addAll(pointsList)
+                                .width(20)
+                                .color(Color.CYAN));
+                    }
+                }
+
+                // center camera on entire route bounds (position & zoom)
+                JSONObject routeBounds = directionsResult.getJSONArray("routes").getJSONObject(0).getJSONObject("bounds");
+                LatLng southwestBound = new LatLng(routeBounds.getJSONObject("southwest").getDouble("lat"),
+                        routeBounds.getJSONObject("southwest").getDouble("lng"));
+                LatLng northeastBound = new LatLng(routeBounds.getJSONObject("northeast").getDouble("lat"),
+                        routeBounds.getJSONObject("northeast").getDouble("lng"));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(new LatLngBounds(southwestBound, northeastBound), 50));
+            } catch (Exception e) {
+                // TODO: handle errors
+            }
+        }
     }
 }

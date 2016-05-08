@@ -18,4 +18,7 @@
     <!-- Preferences Activity -->
     <string name="change_destination">Change Destination</string>
 
+    <!-- Google service key -->
+    <string name="google_service_key">AIzaSyAT6KiRrr9rM3AXckS2n5w3wjozQjszu8k</string>
+
 </resources>
