@@ -135,6 +135,7 @@ public class PlanActivity extends AppCompatActivity {
             // Start preferences activity, while passing down destinations data
             Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
             preferencesIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
+            preferencesIntent.putExtra("duration", 60 * hours + minutes);
             preferencesIntent.putStringArrayListExtra(Intent.EXTRA_STREAM, destinations);
             preferencesIntent.setType("possibleDestinations");
             startActivity(preferencesIntent);
