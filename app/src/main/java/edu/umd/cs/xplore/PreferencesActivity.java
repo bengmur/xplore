@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -15,7 +14,6 @@ import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -53,15 +51,15 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
         // set up the toolbar
         Toolbar prefToolbar = (Toolbar) findViewById(R.id.preferences_toolbar);
-        prefToolbar.setTitle(curDestination);
         setSupportActionBar(prefToolbar);
+
 
         // set up the Spinner (dropdown of destinations)
         Spinner destSpinner = (Spinner) findViewById(R.id.destination_spinner);
         destSpinner.setOnItemSelectedListener(this);
         ArrayAdapter<String> destAdapter =
                 new ArrayAdapter<String>(this, R.layout.spinner_item, destinationList);
-        destAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        destAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
         destSpinner.setAdapter(destAdapter);
 
         // set up the FAB
@@ -100,7 +98,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                     view.setBackgroundColor(Color.WHITE);
                 } else {
                     selectedPreferences.add(curPreferenceTag);
-                    view.setBackgroundColor(Color.parseColor("#2196F3"));
+                    view.setBackgroundResource(R.color.colorAccent);
                 }
             }
         });
