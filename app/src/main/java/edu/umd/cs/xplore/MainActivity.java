@@ -12,6 +12,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.BottomSheetBehavior;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
@@ -78,8 +79,8 @@ public class MainActivity extends FragmentActivity implements
                 if (actualLocations.size() > 0) {
                     newLocs.add(actualLocations.get(actualLocations.size() - 1));
                 }
-                newLocs.addAll((ArrayList<LatLng>)bundle.get("locs"));
-                actualLocations.addAll((ArrayList<LatLng>)bundle.get("locs"));
+                newLocs.addAll((ArrayList<LatLng>) bundle.get("locs"));
+                actualLocations.addAll((ArrayList<LatLng>) bundle.get("locs"));
 
                 drawMovingLoc();
             }
@@ -104,7 +105,7 @@ public class MainActivity extends FragmentActivity implements
             }
         });
 
-        View bottomSheet = findViewById( R.id.bottom_sheet );
+        View bottomSheet = findViewById(R.id.bottom_sheet);
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
         mBottomSheetBehavior.setHideable(false);
 
@@ -117,11 +118,29 @@ public class MainActivity extends FragmentActivity implements
             }
 
             @Override
-            public void onSwiped(RecyclerView.ViewHolder viewHolder, int swipeDir) {
+            public void onSwiped(final RecyclerView.ViewHolder viewHolder, int swipeDir) {
                 int position = viewHolder.getAdapterPosition();
+                final String place = itinerary.get(position);
+                final String newPlace = putNewPlaceInItinerary();
+                Snackbar snackbar = Snackbar
+                        .make(recyclerView, "PLACE REMOVED", Snackbar.LENGTH_LONG)
+                        .setAction("UNDO", new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                int mAdapterPosition = viewHolder.getAdapterPosition();
+                                if(mAdapterPosition > -1) {
+                                    itinerary.add(mAdapterPosition, place);
+                                    recyclerView.getAdapter().notifyItemInserted(mAdapterPosition);
+                                    recyclerView.scrollToPosition(mAdapterPosition);
+                                    int newPlacePos = itinerary.indexOf(newPlace);
+                                    itinerary.remove(newPlacePos);
+                                    recyclerView.getAdapter().notifyItemRemoved(newPlacePos);
+                                }
+                            }
+                        });
+                snackbar.show();
                 itinerary.remove(position);
                 recyclerView.getAdapter().notifyItemRemoved(position);
-                String temp = putNewPlaceInItinerary();
                 recyclerView.getAdapter().notifyDataSetChanged();
             }
         };
@@ -233,7 +252,7 @@ public class MainActivity extends FragmentActivity implements
 
     }
 
-    private String putNewPlaceInItinerary(){
+    private String putNewPlaceInItinerary() {
         String currPreference = selectedPreferences.get(preferenceIdx);
         ArrayList<String> places = matches.get(currPreference);
 
@@ -392,10 +411,10 @@ public class MainActivity extends FragmentActivity implements
     }
 
     private void drawMovingLoc() {
-            Polyline line = mMap.addPolyline(new PolylineOptions()
-                    .addAll(newLocs)
-                    .width(20)
-                    .color(Color.RED));
+        Polyline line = mMap.addPolyline(new PolylineOptions()
+                .addAll(newLocs)
+                .width(20)
+                .color(Color.RED));
     }
 
     private String readStream(InputStream is) {
