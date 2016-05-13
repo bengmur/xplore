@@ -110,7 +110,7 @@ public class MainActivity extends FragmentActivity implements
 
         View bottomSheet = findViewById( R.id.bottom_sheet );
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
-//        mBottomSheetBehavior.setPeekHeight(250);
+        mBottomSheetBehavior.setHideable(false);
 
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
         recyclerView.setAdapter(new RecyclerViewStringListAdapter(adjectives));
