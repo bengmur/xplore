@@ -20,7 +20,6 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.view.View;
-import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -57,8 +56,12 @@ public class MainActivity extends FragmentActivity implements
     private static final String TAG = "MainActivity";
 
     private GoogleMap mMap;
-    private HashSet<String> selectedPreferences;
-    private HashMap<String, ArrayList<String>> itinerary;
+    private ArrayList<String> selectedPreferences;
+    private HashMap<String, ArrayList<String>> matches;
+    private int duration;
+    private ArrayList<String> itinerary;
+    private int preferenceIdx;
+    private String destination;
 
     private BottomSheetBehavior mBottomSheetBehavior;
     private RecyclerView recyclerView;
@@ -235,13 +238,80 @@ public class MainActivity extends FragmentActivity implements
 
     }
 
+    private String putNewPlaceInItinerary(){
+        String currPreference = selectedPreferences.get(preferenceIdx);
+        ArrayList<String> places = matches.get(currPreference);
+
+        // Handle no places found for preference
+        while (places.isEmpty()) {
+            Log.e(TAG, "No places found for preference " + currPreference);
+            selectedPreferences.remove(currPreference);
+            if (selectedPreferences.isEmpty()) {
+                Log.e(TAG, "No places found for any preferences");
+                preferenceIdx = 0;
+                return null;
+            }
+            preferenceIdx = preferenceIdx % selectedPreferences.size();
+            currPreference = selectedPreferences.get(preferenceIdx);
+            places = matches.get(currPreference);
+        }
+
+        // Replace chosen place at end of list
+        String place = places.remove(0);
+        places.add(place);
+
+        // Iterate to next preference and add to itinerary
+        preferenceIdx = (preferenceIdx + 1) % selectedPreferences.size();
+        if (itinerary.contains(place)) {
+            Log.e(TAG, place + " already in itinerary");
+            return null; // Nothing to add?
+        } else {
+            itinerary.add(place);
+        }
+        return place;
+    }
+
+    private void createItinerary() {
+        int tripDuration = Math.round(0.6f * duration);
+        int numPlaces = Math.round(tripDuration / 120f);
+        for (int i = 0; i < numPlaces; i++) {
+            String place = putNewPlaceInItinerary();
+            Log.i(TAG, "Found place = " + place);
+        }
+        Log.i(TAG, "Itinerary = " + itinerary.toString());
+    }
+
     // Store HashSet containing preferences sent from PreferencesActivity
     private void handleSendPreferences(Intent intent) {
-        selectedPreferences =
-                (HashSet<String>) intent.getSerializableExtra(PreferencesActivity.SELECTED_PREFERENCES);
-        itinerary = (HashMap<String, ArrayList<String>>) intent.getSerializableExtra(PreferencesActivity.ITINERARY);
-        for (String preference : itinerary.keySet()) {
-            Log.i(TAG, preference + " -> " + itinerary.get(preference));
+        // Retrieve data passed through intent
+        selectedPreferences = intent.getStringArrayListExtra(PreferencesActivity.SELECTED_PREFERENCES);
+        matches = (HashMap<String, ArrayList<String>>) intent.getSerializableExtra(PreferencesActivity.ITINERARY);
+        if (selectedPreferences.size() <= 0) {
+            selectedPreferences = new ArrayList<String>(matches.keySet());
+        }
+        duration = intent.getIntExtra(PlanActivity.DURATION, 400);
+
+        // Get destination
+        if (!matches.containsKey("destination")) {
+            Log.e(TAG, "Destination not passed");
+            throw new IllegalArgumentException("Destination not passed"); // TODO: Handle differently?
+        }
+        ArrayList<String> destinations = matches.get("destination");
+        if (destinations.isEmpty()) {
+            Log.e(TAG, "Destination not passed");
+            throw new IllegalArgumentException("Destination not passed"); // TODO: Handle differently?
+        }
+        destination = matches.get("destination").get(0);
+        Log.i(TAG, "Destination = " + destination);
+
+        // Fill itinerary
+        preferenceIdx = 0;
+        itinerary = new ArrayList<String>();
+        createItinerary();
+
+        // Log preferences for debugging
+        for (String preference : matches.keySet()) {
+            Log.i(TAG, preference + " -> " + matches.get(preference));
         }
     }
 

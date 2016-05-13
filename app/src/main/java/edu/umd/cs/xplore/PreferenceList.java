@@ -1,5 +1,8 @@
 package edu.umd.cs.xplore;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 /**
  * Singleton class that holds the data for the preference grid list
  */
@@ -46,6 +49,10 @@ public class PreferenceList {
 
     public String getPreferenceTitle(int position) {
         return preferenceTitles[position];
+    }
+
+    public ArrayList<String> getPreferenceTags() {
+        return new ArrayList<String>(Arrays.asList(preferenceTags));
     }
 
     public String getTitleFromTag(String tag) {

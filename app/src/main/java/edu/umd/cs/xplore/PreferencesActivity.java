@@ -25,7 +25,14 @@ import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.location.places.AutocompletePrediction;
+import com.google.android.gms.location.places.AutocompletePredictionBuffer;
+import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.PlaceBuffer;
 import com.google.android.gms.location.places.Places;
+import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -142,69 +149,75 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
     }
 
-//    public void convertPlaceIdToPlace(String placeId) {
-//        // Get place
-//        Log.i(TAG, "Getting Place from Place ID...");
-//        PendingResult<PlaceBuffer> placeResults = Places.GeoDataApi.getPlaceById(mGoogleApiClient, placeId);
-//        placeResults.setResultCallback(new ResultCallback<PlaceBuffer>() {
-//            @Override
-//            public void onResult(@NonNull PlaceBuffer places) {
-//                Place destination = places.get(0);
-//                Log.i(TAG, String.format("Place = %s", destination.getName().toString()));
-//                places.release();
-//            }
-//        });
-//    }
+    public void convertPlaceIdToPlace(String placeId) {
+        // Get place
+        Log.i(TAG, "Getting Place from Place ID...");
+        PendingResult<PlaceBuffer> placeResults = Places.GeoDataApi.getPlaceById(mGoogleApiClient, placeId);
+        placeResults.setResultCallback(new ResultCallback<PlaceBuffer>() {
+            @Override
+            public void onResult(@NonNull PlaceBuffer places) {
+                Place destination = places.get(0);
+                Log.i(TAG, String.format("Place = %s", destination.getName().toString()));
+                findNearby(destination.getLatLng());
+            }
+        });
+        // TODO: Use progress dialog
+    }
 
-//    public void convertStringToPlaceId(String placeName) {
-//        // Get place ID
-//        Log.i(TAG, "Converting curr destination string to Place ID...");
-//        PendingResult<AutocompletePredictionBuffer> autocompleteResults
-//                = Places.GeoDataApi.getAutocompletePredictions(mGoogleApiClient, placeName, null, null);
-//        autocompleteResults.setResultCallback(new ResultCallback<AutocompletePredictionBuffer>() {
-//            @Override
-//            public void onResult(@NonNull AutocompletePredictionBuffer autocompletePredictions) {
-//                AutocompletePrediction prediction = autocompletePredictions.get(0);
-//                String placeId = prediction.getPlaceId();
-//                Log.i(TAG, String.format("Place ID = %s", placeId));
-//                autocompletePredictions.release();
-//            }
-//        });
-//    }
+    public void convertStringToPlaceId(String placeName) {
+        // Get place ID
+        Log.i(TAG, "Converting curr destination string to Place ID...");
+        PendingResult<AutocompletePredictionBuffer> autocompleteResults
+                = Places.GeoDataApi.getAutocompletePredictions(mGoogleApiClient, placeName, null, null);
+        autocompleteResults.setResultCallback(new ResultCallback<AutocompletePredictionBuffer>() {
+            @Override
+            public void onResult(@NonNull AutocompletePredictionBuffer autocompletePredictions) {
+                AutocompletePrediction prediction = autocompletePredictions.get(0);
+                String placeId = prediction.getPlaceId();
+                Log.i(TAG, String.format("Place ID = %s", placeId));
+                convertPlaceIdToPlace(placeId);
+            }
+        });
+        // TODO: Use progress dialog
+    }
+
+    public void findNearby(LatLng latLng) {
+        String position = Double.toString(latLng.latitude) + "," + Double.toString(latLng.longitude);
+        Log.i(TAG, "LatLng of dest = " + position);
+        SearchNearbyAsyncTask searchTask = new SearchNearbyAsyncTask(curDestination, selectedPreferences);
+        searchTask.execute(position);
+    }
 
     public void createAndPassItinerary() {
         // Find destination coordinates in order to find nearby places
         Log.i(TAG, "Finding destination coordinates...");
+
+        // Try to use geocoder, otherwise need to use Places API
         Geocoder gcd = new Geocoder(PreferencesActivity.this);
         List<Address> possibleDestinations = null;
         try {
             possibleDestinations = gcd.getFromLocationName(curDestination, 1);
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Failed to geocode " + curDestination, e);
         }
-        Address destinationAddress = possibleDestinations.get(0);
-        String latLng = String.format("%f,%f", destinationAddress.getLatitude(), destinationAddress.getLongitude());
-        Log.i(TAG, latLng);
-        SearchNearbyAsyncTask searchTask = new SearchNearbyAsyncTask(curDestination, selectedPreferences);
-        searchTask.execute(latLng);
 
-        // Convert destination String to Place
-//        convertStringToPlaceId(curDestination);
-
-        // TODO: Get actual location
-//        detectCurrentPlace();
-
-        // TODO: Figure out length of roundtrip travel to destination
-
-
-        // TODO: Use preference and figure out where to go on leftover time
+        // Check to see if geocoder worked
+        if (possibleDestinations == null || possibleDestinations.isEmpty()) {
+            Log.e(TAG, "Possible destinations is empty");
+            // Use Places API to find nearby
+            convertStringToPlaceId(curDestination);
+        } else {
+            Address destinationAddress = possibleDestinations.get(0);
+            findNearby(new LatLng(destinationAddress.getLatitude(), destinationAddress.getLongitude()));
+        }
     }
 
-    private void sendIntent(HashMap<String, ArrayList<String>> itinerary) {
+    private void sendIntent(ArrayList<String> preferences, HashMap<String, ArrayList<String>> matches) {
         Intent intent = new Intent(getApplicationContext(), MainActivity.class);
         intent.setAction(Intent.ACTION_SEND);
-        intent.putExtra(SELECTED_PREFERENCES, selectedPreferences);
-        intent.putExtra(ITINERARY, itinerary);
+        intent.putExtra(SELECTED_PREFERENCES, new ArrayList<String>(selectedPreferences));
+        intent.putExtra(ITINERARY, matches);
+        intent.putExtra(PlanActivity.DURATION, duration);
         intent.setType("list/preferences");
         startActivity(intent);
     }
@@ -390,7 +403,12 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
         public SearchNearbyAsyncTask(String destination, HashSet<String> selectedPreferences) {
             result = new HashMap<String, ArrayList<String>>();
-            preferences = new ArrayList<String>(selectedPreferences);
+
+            if (selectedPreferences.size() > 0) {
+                preferences = new ArrayList<String>(selectedPreferences);
+            } else {
+                preferences = new ArrayList<String>(PreferenceList.getInstance().getPreferenceTags());
+            }
 
             ArrayList<String> destinationList = new ArrayList<String>();
             destinationList.add(destination);
@@ -459,7 +477,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                 // TODO: handle errors
                 Log.e(TAG, "Exception parsing responses.", e);
             }
-            sendIntent(result);
+            sendIntent(preferences, result);
         }
     }
 
