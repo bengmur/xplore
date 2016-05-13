@@ -141,7 +141,9 @@ public class MainActivity extends FragmentActivity implements
                 snackbar.show();
                 itinerary.remove(position);
                 recyclerView.getAdapter().notifyItemRemoved(position);
-                recyclerView.getAdapter().notifyDataSetChanged();
+                int newPlacePos = itinerary.indexOf(newPlace);
+                recyclerView.getAdapter().notifyItemInserted(newPlacePos);
+                recyclerView.scrollToPosition(newPlacePos);
             }
         };
 
