@@ -15,6 +15,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
@@ -42,6 +43,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -52,8 +54,11 @@ public class MainActivity extends FragmentActivity implements
         OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
 
+    private static final String TAG = "MainActivity";
+
     private GoogleMap mMap;
     private HashSet<String> selectedPreferences;
+    private HashMap<String, ArrayList<String>> itinerary;
 
     private BottomSheetBehavior mBottomSheetBehavior;
     private RecyclerView recyclerView;
@@ -237,7 +242,10 @@ public class MainActivity extends FragmentActivity implements
     private void handleSendPreferences(Intent intent) {
         selectedPreferences =
                 (HashSet<String>) intent.getSerializableExtra(PreferencesActivity.SELECTED_PREFERENCES);
-        Toast.makeText(this, selectedPreferences.toString(), Toast.LENGTH_LONG).show();
+        itinerary = (HashMap<String, ArrayList<String>>) intent.getSerializableExtra(PreferencesActivity.ITINERARY);
+        for (String preference : itinerary.keySet()) {
+            Log.i(TAG, preference + " -> " + itinerary.get(preference));
+        }
     }
 
     private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
@@ -265,7 +273,7 @@ public class MainActivity extends FragmentActivity implements
                 String queryResponse = readStream(in);
                 urlConnection.disconnect(); // TODO: put this in a "finally" block
 
-            return queryResponse;
+                return queryResponse;
             } catch (Exception e) {
                 // TODO: handle errors; particularly an error resulting from no internet access
                 return "";
