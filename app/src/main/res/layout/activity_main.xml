@@ -19,38 +19,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_marginRight="@dimen/fab_margin"
+        android:layout_margin="@dimen/fab_margin"
         android:src="@drawable/ic_add_white_24dp"
         android:onClick="planTrip"
         app:layout_anchor="@+id/bottom_sheet"
         app:layout_anchorGravity="top|end"
         app:elevation="4dp"/>
-
-    <!--<android.support.v4.widget.NestedScrollView-->
-        <!--android:id="@+id/bottom_sheet"-->
-        <!--android:layout_width="match_parent"-->
-        <!--android:layout_height="500dp"-->
-        <!--android:clipToPadding="true"-->
-        <!--android:background="@android:color/holo_orange_light"-->
-        <!--app:layout_behavior="android.support.design.widget.BottomSheetBehavior"-->
-        <!-->-->
-        <!--<LinearLayout-->
-            <!--android:layout_width="match_parent"-->
-            <!--android:layout_height="match_parent">-->
-
-            <!--<TextView-->
-                <!--android:layout_width="wrap_content"-->
-                <!--android:layout_height="wrap_content"-->
-                <!--android:layout_gravity="center_vertical"-->
-                <!--tools:text="EXAMPLE ITEM"/>-->
-
-            <!--<android.support.v7.widget.RecyclerView-->
-                <!--android:layout_width="match_parent"-->
-                <!--android:layout_height="match_parent"-->
-                <!--android:scrollbars="vertical"-->
-                <!--android:id="@+id/recycler_view"/>-->
-        <!--</LinearLayout>-->
-    <!--</android.support.v4.widget.NestedScrollView>-->
 
     <FrameLayout
         android:id="@+id/bottom_sheet"

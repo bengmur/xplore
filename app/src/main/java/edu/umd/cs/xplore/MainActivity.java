@@ -63,6 +63,7 @@ public class MainActivity extends FragmentActivity implements
     private String destination;
 
     private BottomSheetBehavior mBottomSheetBehavior;
+    private int peekHeight;
     private RecyclerView recyclerView;
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
@@ -108,6 +109,8 @@ public class MainActivity extends FragmentActivity implements
         View bottomSheet = findViewById(R.id.bottom_sheet);
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
         mBottomSheetBehavior.setHideable(false);
+        peekHeight = mBottomSheetBehavior.getPeekHeight();
+        mBottomSheetBehavior.setPeekHeight(0);
 
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 
@@ -119,31 +122,30 @@ public class MainActivity extends FragmentActivity implements
 
             @Override
             public void onSwiped(final RecyclerView.ViewHolder viewHolder, int swipeDir) {
-                int position = viewHolder.getAdapterPosition();
+                final int position = viewHolder.getAdapterPosition();
                 final String place = itinerary.get(position);
                 final String newPlace = putNewPlaceInItinerary();
+                int newPlacePos = itinerary.indexOf(newPlace);
+                recyclerView.getAdapter().notifyItemInserted(newPlacePos);
                 Snackbar snackbar = Snackbar
                         .make(recyclerView, "PLACE REMOVED", Snackbar.LENGTH_LONG)
                         .setAction("UNDO", new View.OnClickListener() {
                             @Override
                             public void onClick(View view) {
-                                int mAdapterPosition = viewHolder.getAdapterPosition();
-                                if(mAdapterPosition > -1) {
-                                    itinerary.add(mAdapterPosition, place);
-                                    recyclerView.getAdapter().notifyItemInserted(mAdapterPosition);
-                                    recyclerView.scrollToPosition(mAdapterPosition);
-                                    int newPlacePos = itinerary.indexOf(newPlace);
-                                    itinerary.remove(newPlacePos);
-                                    recyclerView.getAdapter().notifyItemRemoved(newPlacePos);
+                                if(position > -1) {
+                                    itinerary.add(position, place);
+                                    recyclerView.getAdapter().notifyItemInserted(position);
+                                    int newPos = itinerary.indexOf(newPlace);
+                                    itinerary.remove(newPos);
+                                    recyclerView.getAdapter().notifyItemRemoved(newPos);
+                                    recyclerView.scrollToPosition(newPos);
                                 }
                             }
                         });
                 snackbar.show();
                 itinerary.remove(position);
                 recyclerView.getAdapter().notifyItemRemoved(position);
-                int newPlacePos = itinerary.indexOf(newPlace);
-                recyclerView.getAdapter().notifyItemInserted(newPlacePos);
-                recyclerView.scrollToPosition(newPlacePos);
+                recyclerView.scrollToPosition(position);
             }
         };
 
@@ -329,6 +331,9 @@ public class MainActivity extends FragmentActivity implements
         for (String preference : matches.keySet()) {
             Log.i(TAG, preference + " -> " + matches.get(preference));
         }
+
+        // Set PeekHeight
+        mBottomSheetBehavior.setPeekHeight(peekHeight);
 
         // Load RecycleView
         recyclerView.setAdapter(new RecyclerViewStringListAdapter(itinerary, matches));
