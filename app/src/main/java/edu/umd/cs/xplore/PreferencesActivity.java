@@ -270,6 +270,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
             }
             return bo.toString();
         } catch (IOException e) {
+            Log.e(TAG, "Error reading stream", e);
             return "";
         }
     }

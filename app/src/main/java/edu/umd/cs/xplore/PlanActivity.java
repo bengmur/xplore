@@ -118,12 +118,12 @@ public class PlanActivity extends AppCompatActivity {
            of duration, so 20% for each way, assuming speed of 60mph. Total duration in
            minutes means total possible miles we can drive in this trip. */
         int totalDuration = (60 * hours) + minutes;
-        double radius = totalDuration / 5;
+        double radius = totalDuration / 5.0;
 
         /* Using radius, we can figure out how much the lat and long of the origin
            can change. 1 degree change in lat is 69 miles, and 1 degree in long is 53 miles. */
-        double latDelta = radius / 69;
-        double longDelta = radius / 53;
+        double latDelta = radius / 69.0;
+        double longDelta = radius / 53.0;
 
         /* Create an array for 4 different LatLng coordinates that the user can go during
            this time. Each LatLng coordinate is 2 consecutive elements, one for Lat and one
@@ -135,12 +135,12 @@ public class PlanActivity extends AppCompatActivity {
                 Double.toString(currLat), Double.toString(currLong - longDelta)};
 
         // Add user destination if it was entered
-        if (inputDest.length() != 0) {
+        if (!inputDest.isEmpty()) {
             destinations.add(inputDest);
         }
 
         // Start async task to find possible destinations
-        FindLocationName findName = new FindLocationName(destinations);
+        FindLocationName findName = new FindLocationName(totalDuration, destinations);
         findName.execute(coordinates);
     }
 
@@ -154,15 +154,18 @@ public class PlanActivity extends AppCompatActivity {
             }
             return bo.toString();
         } catch (IOException e) {
+            Log.e(TAG, "Exception reading stream", e);
             return "";
         }
     }
 
     private class FindLocationName extends AsyncTask<String, Integer, String[]> {
 
+        private int duration;
         private List<String> destinations;
 
-        public FindLocationName(List<String> destinations) {
+        public FindLocationName(int duration, List<String> destinations) {
+            this.duration = duration;
             this.destinations = destinations;
         }
 
@@ -208,6 +211,7 @@ public class PlanActivity extends AppCompatActivity {
                 return queryResponses;
             } catch (Exception e) {
                 // TODO: handle errors; particularly an error resulting from no internet access
+                Log.e(TAG, "Exception in FindLocationName", e);
                 String[] toRet = {""};
                 return toRet;
             }
@@ -233,10 +237,12 @@ public class PlanActivity extends AppCompatActivity {
                 Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
                 preferencesIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
                 preferencesIntent.putStringArrayListExtra(Intent.EXTRA_STREAM, (ArrayList<String>) destinations);
+                preferencesIntent.putExtra(DURATION, duration);
                 preferencesIntent.setType("possibleDestinations");
                 startActivity(preferencesIntent);
             } catch (Exception e) {
                 // TODO: handle errors
+                Log.e(TAG, "JSON parsing exception in FindLocationName", e);
             }
         }
     }

@@ -251,9 +251,8 @@ public class MainActivity extends FragmentActivity implements
             places = matches.get(currPreference);
         }
 
-        // Replace chosen place at end of list
+        // Remove place without replacement
         String place = places.remove(0);
-        places.add(place);
 
         // Iterate to next preference and add to itinerary
         preferenceIdx = (preferenceIdx + 1) % selectedPreferences.size();
@@ -267,8 +266,10 @@ public class MainActivity extends FragmentActivity implements
     }
 
     private void createItinerary() {
-        int tripDuration = Math.round(0.6f * duration);
-        int numPlaces = Math.round(tripDuration / 120f);
+        double tripDuration = Math.ceil(0.6 * duration);
+        int numPlaces = (int) Math.ceil(tripDuration / 120.0);
+        Log.i(TAG, "Num places = " + numPlaces);
+        Log.i(TAG, "Number of preferences = " + selectedPreferences.size());
         for (int i = 0; i < numPlaces; i++) {
             String place = putNewPlaceInItinerary();
             Log.i(TAG, "Found place = " + place);
@@ -281,23 +282,25 @@ public class MainActivity extends FragmentActivity implements
         // Retrieve data passed through intent
         selectedPreferences = intent.getStringArrayListExtra(PreferencesActivity.SELECTED_PREFERENCES);
         matches = (HashMap<String, ArrayList<String>>) intent.getSerializableExtra(PreferencesActivity.ITINERARY);
-        if (selectedPreferences.size() <= 0) {
-            selectedPreferences = new ArrayList<String>(matches.keySet());
-        }
         duration = intent.getIntExtra(PlanActivity.DURATION, 400);
 
         // Get destination
-        if (!matches.containsKey("destination")) {
+        if (matches == null || !matches.containsKey("destination")) {
             Log.e(TAG, "Destination not passed");
             throw new IllegalArgumentException("Destination not passed"); // TODO: Handle differently?
         }
-        ArrayList<String> destinations = matches.get("destination");
+        ArrayList<String> destinations = matches.remove("destination");
         if (destinations.isEmpty()) {
             Log.e(TAG, "Destination not passed");
             throw new IllegalArgumentException("Destination not passed"); // TODO: Handle differently?
         }
-        destination = matches.get("destination").get(0);
+        destination = destinations.get(0);
         Log.i(TAG, "Destination = " + destination);
+
+        // Make sure preferences were selected
+        if (selectedPreferences == null || selectedPreferences.isEmpty()) {
+            selectedPreferences = new ArrayList<String>(matches.keySet());
+        }
 
         // Fill itinerary
         preferenceIdx = 0;
