@@ -40,6 +40,15 @@ public class PreferenceList {
         return imageIds[position];
     }
 
+    public Integer getImageId(String pref) {
+        for(int i = 0; i < preferenceTags.length; i++) {
+            if(preferenceTags[i].equals(pref)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     public String getPreferenceTag(int position) {
         return preferenceTags[position];
     }

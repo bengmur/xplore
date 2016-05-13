@@ -19,9 +19,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="@dimen/fab_margin"
+        android:layout_marginRight="@dimen/fab_margin"
         android:src="@drawable/ic_add_white_24dp"
-        android:onClick="planTrip" />
+        android:onClick="planTrip"
+        app:layout_anchor="@+id/bottom_sheet"
+        app:layout_anchorGravity="top|end"
+        app:elevation="4dp"/>
 
     <!--<android.support.v4.widget.NestedScrollView-->
         <!--android:id="@+id/bottom_sheet"-->
@@ -52,25 +55,30 @@
     <FrameLayout
         android:id="@+id/bottom_sheet"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@android:color/holo_orange_light"
+        android:layout_height="400dp"
         app:behavior_hideable="true"
-        app:layout_behavior="android.support.design.widget.BottomSheetBehavior">
+        app:layout_behavior="android.support.design.widget.BottomSheetBehavior"
+        app:behavior_peekHeight="85dp">
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingTop="25dp">
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
-                android:text="PLACES TO VISIT"
-                android:textSize="18sp"/>
+                android:text="Places to Visit"
+                android:textSize="18sp"
+                android:padding="20dp"
+                android:textColor="@android:color/white"
+                android:background="@color/colorPrimary"/>
             <android.support.v7.widget.RecyclerView
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scrollbars="vertical"
-                android:id="@+id/recycler_view"/>
+                android:id="@+id/recycler_view"
+                android:background="@android:color/white"/>
         </LinearLayout>
 </FrameLayout>
 
