@@ -83,10 +83,10 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
             if ("possibleDestinations".equals(type)) {
                 handleSendDestinations(intent);
             } else {
-                //TODO Handle other intents
+                // TODO Handle other intents
             }
         } else {
-            //TODO Handle other intents
+            // TODO Handle other intents
         }
 
         // set up the toolbar
@@ -167,7 +167,6 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                 findNearby(destination.getLatLng());
             }
         });
-        // TODO: Use progress dialog
     }
 
     public void convertStringToPlaceId(String placeName) {
@@ -184,7 +183,6 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                 convertPlaceIdToPlace(placeId);
             }
         });
-        // TODO: Use progress dialog
     }
 
     public void findNearby(LatLng latLng) {
@@ -221,7 +219,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
     private void sendIntent(ArrayList<String> preferences, HashMap<String, ArrayList<String>> matches) {
         Intent intent = new Intent(getApplicationContext(), MainActivity.class);
         intent.setAction(Intent.ACTION_SEND);
-        intent.putExtra(SELECTED_PREFERENCES, new ArrayList<String>(selectedPreferences));
+        intent.putExtra(SELECTED_PREFERENCES, preferences);
         intent.putExtra(ITINERARY, matches);
         intent.putExtra(PlanActivity.DURATION, duration);
         intent.setType("list/preferences");
@@ -277,7 +275,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        //TODO determine if you need a menu for this activity
+        // TODO determine if you need a menu for this activity
         return true;
     }
 
@@ -286,14 +284,13 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        //TODO determine if you need a menu for this activity
+        // TODO determine if you need a menu for this activity
         return true;
     }
 
     // Save the selected destination from the dropdown as the current
     // destination
-    public void onItemSelected(AdapterView<?> parent, View view,
-                               int pos, long id) {
+    public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
         curDestination = (String) parent.getItemAtPosition(pos);
     }
 
@@ -317,8 +314,8 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        // TODO: Please implement GoogleApiClient.OnConnectionFailedListener to
-        // handle connection failures.
+        // TODO: Please implement GoogleApiClient.OnConnectionFailedListener to handle connection failures.
+        Log.e(TAG, "Connection failure not handled");
     }
 
     @Override
@@ -412,7 +409,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
             result = new HashMap<String, ArrayList<String>>();
             preferences = new ArrayList<String>(selectedPreferences);
 
-            if (selectedPreferences.size() > 0) {
+            if (!selectedPreferences.isEmpty()) {
                 preferences = new ArrayList<String>(selectedPreferences);
             } else {
                 preferences = new ArrayList<String>(PreferenceList.getInstance().getPreferenceTags());

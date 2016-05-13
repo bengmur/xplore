@@ -32,7 +32,7 @@ import java.util.Locale;
 public class PlanActivity extends AppCompatActivity {
 
     public static final String DURATION = "edu.umd.cs.xplore.DURATION";
-    private final static String TAG = "PlanActivity";
+    private static final String TAG = "PlanActivity";
 
     private NumberPicker hourField;
     private NumberPicker minuteField;
@@ -212,8 +212,7 @@ public class PlanActivity extends AppCompatActivity {
             } catch (Exception e) {
                 // TODO: handle errors; particularly an error resulting from no internet access
                 Log.e(TAG, "Exception in FindLocationName", e);
-                String[] toRet = {""};
-                return toRet;
+                return new String[]{""};
             }
         }
 
