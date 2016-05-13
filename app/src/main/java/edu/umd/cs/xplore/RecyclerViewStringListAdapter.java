@@ -14,6 +14,7 @@ import java.util.List;
 public class RecyclerViewStringListAdapter extends RecyclerView.Adapter {
 
     private PreferenceList prefList = PreferenceList.getInstance();
+    private static String TAG = "RecyclerViewString";
 
     protected class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivImage;
