@@ -7,9 +7,13 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class RecyclerViewStringListAdapter extends RecyclerView.Adapter {
+
+    private PreferenceList prefList = PreferenceList.getInstance();
 
     protected class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivImage;
@@ -23,9 +27,11 @@ public class RecyclerViewStringListAdapter extends RecyclerView.Adapter {
     }
 
     private List strings;
+    HashMap<String, ArrayList<String>> matches;
 
-    public RecyclerViewStringListAdapter(List strings) {
+    public RecyclerViewStringListAdapter(List strings, HashMap<String, ArrayList<String>> matches) {
         this.strings = strings;
+        this.matches = matches;
     }
 
     @Override
@@ -42,7 +48,15 @@ public class RecyclerViewStringListAdapter extends RecyclerView.Adapter {
 
     @Override
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-        ViewHolder myViewHolder = (ViewHolder)holder;
-        myViewHolder.tvText.setText((String)strings.get(position));
+        ViewHolder myViewHolder = (ViewHolder) holder;
+        myViewHolder.tvText.setText((String) strings.get(position));
+        int imagePos = 0;
+        for (String key : this.matches.keySet()) {
+            if (this.matches.get(key).contains(this.strings.get(position))) {
+                imagePos = prefList.getImageId(key);
+            }
+        }
+        if(imagePos<0){imagePos = 0;}
+        myViewHolder.ivImage.setImageResource(prefList.getImageId(imagePos));
     }
 }

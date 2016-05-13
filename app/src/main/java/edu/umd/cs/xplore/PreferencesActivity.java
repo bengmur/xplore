@@ -1,5 +1,6 @@
 package edu.umd.cs.xplore;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.location.Address;
@@ -68,6 +69,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
     private int duration;
     private int travelTime;
     private GoogleApiClient mGoogleApiClient; // Connect to Google Places API
+    private ProgressDialog findPlacesProgressDialog;
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -89,7 +91,6 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
         // set up the toolbar
         Toolbar prefToolbar = (Toolbar) findViewById(R.id.preferences_toolbar);
-        prefToolbar.setTitle(curDestination);
         setSupportActionBar(prefToolbar);
 
         // set up the Spinner (dropdown of destinations)
@@ -97,7 +98,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         destSpinner.setOnItemSelectedListener(this);
         ArrayAdapter<String> destAdapter =
                 new ArrayAdapter<String>(this, R.layout.spinner_item, destinationList);
-        destAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        destAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
         destSpinner.setAdapter(destAdapter);
 
         // set up the FAB
@@ -132,7 +133,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                     view.setBackgroundColor(Color.WHITE);
                 } else {
                     selectedPreferences.add(curPreferenceTag);
-                    view.setBackgroundColor(Color.parseColor("#2196F3"));
+                    view.setBackgroundResource(R.color.colorAccent);
                 }
             }
         });
@@ -147,6 +148,11 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                 .enableAutoManage(this, this)
                 .addApi(AppIndex.API).build();
 
+        // Set up progress dialog
+        findPlacesProgressDialog = new ProgressDialog(this);
+        findPlacesProgressDialog.setTitle("Finding Locations");
+        findPlacesProgressDialog.setMessage("Finding destinations for your preferences");
+        findPlacesProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
     }
 
     public void convertPlaceIdToPlace(String placeId) {
@@ -403,6 +409,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
         public SearchNearbyAsyncTask(String destination, HashSet<String> selectedPreferences) {
             result = new HashMap<String, ArrayList<String>>();
+            preferences = new ArrayList<String>(selectedPreferences);
 
             if (selectedPreferences.size() > 0) {
                 preferences = new ArrayList<String>(selectedPreferences);
@@ -413,6 +420,11 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
             ArrayList<String> destinationList = new ArrayList<String>();
             destinationList.add(destination);
             result.put("destination", destinationList);
+        }
+
+        @Override
+        protected void onPreExecute() {
+            findPlacesProgressDialog.show();
         }
 
         @Override
@@ -477,6 +489,8 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                 // TODO: handle errors
                 Log.e(TAG, "Exception parsing responses.", e);
             }
+
+            findPlacesProgressDialog.hide();
             sendIntent(preferences, result);
         }
     }

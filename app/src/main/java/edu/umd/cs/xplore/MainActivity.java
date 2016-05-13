@@ -15,10 +15,10 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
-import android.util.Log;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
+import android.util.Log;
 import android.view.View;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -43,8 +43,6 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -65,9 +63,6 @@ public class MainActivity extends FragmentActivity implements
 
     private BottomSheetBehavior mBottomSheetBehavior;
     private RecyclerView recyclerView;
-    private static final List<String> adjectives = new ArrayList<>(Arrays.asList(new String[]{
-            "Awesome", "Peculiar", "Green", "Sad", "Gross", "Lovely", "Insane",
-            "Compostable", "Blue", "Wooden", "Grotesque", "Beautiful"}));
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
 
@@ -111,11 +106,9 @@ public class MainActivity extends FragmentActivity implements
 
         View bottomSheet = findViewById( R.id.bottom_sheet );
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
-        mBottomSheetBehavior.setPeekHeight(300);
+        mBottomSheetBehavior.setHideable(false);
 
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
-        recyclerView.setAdapter(new RecyclerViewStringListAdapter(adjectives));
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         ItemTouchHelper.SimpleCallback simpleItemTouchCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
             @Override
@@ -126,8 +119,10 @@ public class MainActivity extends FragmentActivity implements
             @Override
             public void onSwiped(RecyclerView.ViewHolder viewHolder, int swipeDir) {
                 int position = viewHolder.getAdapterPosition();
-                adjectives.remove(position);
+                itinerary.remove(position);
                 recyclerView.getAdapter().notifyItemRemoved(position);
+                String temp = putNewPlaceInItinerary();
+                recyclerView.getAdapter().notifyDataSetChanged();
             }
         };
 
@@ -313,6 +308,10 @@ public class MainActivity extends FragmentActivity implements
         for (String preference : matches.keySet()) {
             Log.i(TAG, preference + " -> " + matches.get(preference));
         }
+
+        // Load RecycleView
+        recyclerView.setAdapter(new RecyclerViewStringListAdapter(itinerary, matches));
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 
     private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {

@@ -2,10 +2,10 @@
 <android.support.design.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
     tools:context="edu.umd.cs.xplore.PreferencesActivity">
 
     <android.support.design.widget.AppBarLayout
@@ -16,10 +16,7 @@
             android:id="@+id/preferences_toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            android:elevation="4dp"
-            android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
-            app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
+            android:elevation="4dp">
 
             <Spinner
                 android:id="@+id/destination_spinner"
@@ -29,8 +26,6 @@
             </Spinner>
 
         </android.support.v7.widget.Toolbar>
-
-
 
     </android.support.design.widget.AppBarLayout>
 
@@ -42,7 +37,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:src="@drawable/ic_arrow_forward_24dp"/>
+        android:src="@drawable/ic_arrow_forward_24dp" />
 
 
 </android.support.design.widget.CoordinatorLayout>

@@ -38,7 +38,6 @@ public class PlanActivity extends AppCompatActivity {
     private NumberPicker minuteField;
     private PlaceAutocompleteFragment autocompleteFragment;
     private Place destination = null;
-    //private ProgressBar findLocationsProgressBar;
     private ProgressDialog findLocationsProgressDialog;
 
     @Override
