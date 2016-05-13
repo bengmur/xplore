@@ -1,12 +1,15 @@
 package edu.umd.cs.xplore;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.NumberPicker;
+import android.widget.ProgressBar;
 
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.places.Place;
@@ -28,12 +31,15 @@ import java.util.Locale;
 
 public class PlanActivity extends AppCompatActivity {
 
+    public static final String DURATION = "edu.umd.cs.xplore.DURATION";
     private final static String TAG = "PlanActivity";
 
     private NumberPicker hourField;
     private NumberPicker minuteField;
     private PlaceAutocompleteFragment autocompleteFragment;
     private Place destination = null;
+    //private ProgressBar findLocationsProgressBar;
+    private ProgressDialog findLocationsProgressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +90,11 @@ public class PlanActivity extends AppCompatActivity {
         // autocompleteFragment.setBoundsBias(new LatLngBounds(
         //         new LatLng(-33.880490, 151.184363),
         //         new LatLng(-33.858754, 151.229596)));
+
+        findLocationsProgressDialog = new ProgressDialog(this);
+        findLocationsProgressDialog.setTitle("Finding Locations");
+        findLocationsProgressDialog.setMessage("Finding destinations for you to explore");
+        findLocationsProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
     }
 
     public void fabClicked(View view) {
@@ -95,50 +106,43 @@ public class PlanActivity extends AppCompatActivity {
         String inputDest = (destination == null ? "" : destination.getName().toString());
         ArrayList<String> destinations = new ArrayList<String>();
 
-        // If the user didn't input a dest, create a list of possible destinations
-        //  Otherwise (if the user did input a dest), the list is just one element (their input)
-        if (inputDest.length() == 0) {
-            // TODO: get user's current location
-            // TODO: also handle situation where user doesn't give permission
+        // Find 4 possible destinations for the user. If the user enters something, add that
+        //  on to the list of possible destinations.
+        // TODO: get user's current location
+        // TODO: also handle situation where user doesn't give permission
 
-            // example using Frederick, MD
-            double currLat = 39.4143;
-            double currLong = -77.4105;
+        // example using Frederick, MD
+        double currLat = 39.4143;
+        double currLong = -77.4105;
 
-            /* Using duration, limit travel to final destination and back to origin to 40%
-               of duration, so 20% for each way, assuming speed of 60mph. Total duration in
-               minutes means total possible miles we can drive in this trip. */
-            int totalDuration = (60 * hours) + minutes;
-            double radius = totalDuration / 5;
+        /* Using duration, limit travel to final destination and back to origin to 40%
+           of duration, so 20% for each way, assuming speed of 60mph. Total duration in
+           minutes means total possible miles we can drive in this trip. */
+        int totalDuration = (60 * hours) + minutes;
+        double radius = totalDuration / 5;
 
-            /* Using radius, we can figure out how much the lat and long of the origin
-               can change. 1 degree change in lat is 69 miles, and 1 degree in long is 53 miles. */
-            double latDelta = radius / 69;
-            double longDelta = radius / 53;
+        /* Using radius, we can figure out how much the lat and long of the origin
+           can change. 1 degree change in lat is 69 miles, and 1 degree in long is 53 miles. */
+        double latDelta = radius / 69;
+        double longDelta = radius / 53;
 
-            /* Create an array for 4 different LatLng coordinates that the user can go during
-               this time. Each LatLng coordinate is 2 consecutive elements, one for Lat and one
-               for Long. Use the Geonames service in an AsyncTask to find the name of
-               each calculated location. */
-            String[] coordinates = {Double.toString(currLat + latDelta), Double.toString(currLong),
-                    Double.toString(currLat - latDelta), Double.toString(currLong),
-                    Double.toString(currLat), Double.toString(currLong + longDelta),
-                    Double.toString(currLat), Double.toString(currLong - longDelta)};
+        /* Create an array for 4 different LatLng coordinates that the user can go during
+           this time. Each LatLng coordinate is 2 consecutive elements, one for Lat and one
+           for Long. Use the Geonames service in an AsyncTask to find the name of
+           each calculated location. */
+        String[] coordinates = {Double.toString(currLat + latDelta), Double.toString(currLong),
+                Double.toString(currLat - latDelta), Double.toString(currLong),
+                Double.toString(currLat), Double.toString(currLong + longDelta),
+                Double.toString(currLat), Double.toString(currLong - longDelta)};
 
-            // Start async task to find possible destinations
-            FindLocationName findName = new FindLocationName(destinations);
-            findName.execute(coordinates);
-        } else {
-            // Add only user destination
+        // Add user destination if it was entered
+        if (inputDest.length() != 0) {
             destinations.add(inputDest);
-
-            // Start preferences activity, while passing down destinations data
-            Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
-            preferencesIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
-            preferencesIntent.putStringArrayListExtra(Intent.EXTRA_STREAM, destinations);
-            preferencesIntent.setType("possibleDestinations");
-            startActivity(preferencesIntent);
         }
+
+        // Start async task to find possible destinations
+        FindLocationName findName = new FindLocationName(destinations);
+        findName.execute(coordinates);
     }
 
     private String readStream(InputStream is) {
@@ -155,12 +159,17 @@ public class PlanActivity extends AppCompatActivity {
         }
     }
 
-    private class FindLocationName extends AsyncTask<String, Void, String[]> {
+    private class FindLocationName extends AsyncTask<String, Integer, String[]> {
 
         private List<String> destinations;
 
         public FindLocationName(List<String> destinations) {
             this.destinations = destinations;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            findLocationsProgressDialog.show();
         }
 
         @Override
@@ -194,6 +203,7 @@ public class PlanActivity extends AppCompatActivity {
                     queryResponses[i] = readStream(inputStreams[i]);
                     // Disconnect each url as well
                     urlConnections[i].disconnect(); // TODO: put this in a "finally" block
+
                 }
 
                 return queryResponses;
@@ -216,6 +226,9 @@ public class PlanActivity extends AppCompatActivity {
                     destinations.add(location.get("name").toString());
                     Log.i(TAG, location.get("name").toString());
                 }
+
+                // Close progress bar
+                findLocationsProgressDialog.hide();
 
                 // Start preferences activity, while passing down destinations data
                 Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
