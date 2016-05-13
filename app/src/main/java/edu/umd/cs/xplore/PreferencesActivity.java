@@ -59,15 +59,15 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
     public static final String SELECTED_PREFERENCES = "edu.umd.cs.xplore.SELECTED_PREFERENCES";
     public static final String ITINERARY = "edu.umd.cs.xplore.ITINERARY";
 
-    static final String PREFERENCE_TITLE = "What are your interests?";
+    private static final String PREFERENCE_TITLE = "What are your interests?";
     private static final String TAG = "PreferencesActivity";
+
     private PreferencesAdapter prefAdapter;
     private String curDestination;
     private ArrayList<String> destinationList;
     private PreferenceList prefList = PreferenceList.getInstance();
     private HashSet<String> selectedPreferences = new HashSet<String>();
     private int duration;
-    private int travelTime;
     private GoogleApiClient mGoogleApiClient; // Connect to Google Places API
     private ProgressDialog findPlacesProgressDialog;
 
@@ -402,6 +402,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
     private class SearchNearbyAsyncTask extends AsyncTask<String, Void, String[]> {
 
+        // Matches result and list of preferences
         private HashMap<String, ArrayList<String>> result;
         private ArrayList<String> preferences;
 
