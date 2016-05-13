@@ -102,6 +102,8 @@ public class MainActivity extends FragmentActivity implements
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(MainActivity.this, PlanActivity.class);
+                // TODO: change this from hardcoded to actual last location
+                intent.putExtra("lastLoc", new LatLng(38.988205, -76.943566));
                 startActivity(intent);
             }
         });
