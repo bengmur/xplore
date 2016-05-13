@@ -234,6 +234,14 @@ public class MainActivity extends FragmentActivity implements
     }
 
     private String putNewPlaceInItinerary(){
+        // No places to add
+        if (selectedPreferences.isEmpty()) {
+            Log.e(TAG, "No places found for any preferences");
+            preferenceIdx = 0;
+            return null;
+        }
+
+        // Get current preference and list of places
         String currPreference = selectedPreferences.get(preferenceIdx);
         ArrayList<String> places = matches.get(currPreference);
 
