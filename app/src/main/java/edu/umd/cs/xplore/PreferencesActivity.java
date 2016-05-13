@@ -1,5 +1,6 @@
 package edu.umd.cs.xplore;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.location.Address;
@@ -61,6 +62,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
     private int duration;
     private int travelTime;
     private GoogleApiClient mGoogleApiClient; // Connect to Google Places API
+    private ProgressDialog findPlacesProgressDialog;
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -140,6 +142,11 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                 .enableAutoManage(this, this)
                 .addApi(AppIndex.API).build();
 
+        // Set up progress dialog
+        findPlacesProgressDialog = new ProgressDialog(this);
+        findPlacesProgressDialog.setTitle("Finding Locations");
+        findPlacesProgressDialog.setMessage("Finding destinations for your preferences");
+        findPlacesProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
     }
 
 //    public void convertPlaceIdToPlace(String placeId) {
@@ -398,6 +405,11 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         }
 
         @Override
+        protected void onPreExecute() {
+            findPlacesProgressDialog.show();
+        }
+
+        @Override
         protected String[] doInBackground(String... params) {
             try {
                 ArrayList<InputStream> inputStreams = new ArrayList<InputStream>();
@@ -459,6 +471,8 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                 // TODO: handle errors
                 Log.e(TAG, "Exception parsing responses.", e);
             }
+
+            findPlacesProgressDialog.hide();
             sendIntent(result);
         }
     }
