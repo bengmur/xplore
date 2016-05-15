@@ -175,7 +175,14 @@ public class MainActivity extends FragmentActivity implements
                     mBottomSheetBehavior.setHideable(true);
                     mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
                 } else if (shareTrip) {
-                    //TODO: Sharing intent goes here
+                    String toShare = "I just travelled to " + matchNames.get(destination) +
+                            " using the Xplore App!";
+                    Intent shareIntent = new Intent();
+                    shareIntent.setAction(Intent.ACTION_SEND);
+                    shareIntent.putExtra(Intent.EXTRA_TEXT, toShare);
+                    shareIntent.setType("text/plain");
+                    startActivity(Intent.createChooser(shareIntent,
+                            getResources().getText(R.string.share_chooser_title)));
                 } else {
                     Intent intent = new Intent(MainActivity.this, PlanActivity.class);
                     intent.putExtra(LAST_LOC, locService.getCurrentLocation());
