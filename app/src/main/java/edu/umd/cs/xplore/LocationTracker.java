@@ -26,12 +26,12 @@ public class LocationTracker extends Service implements LocationListener {
 
     private static final int LOCATION_INTERVAL = 3000; //milliseconds
     private static final float LOCATION_DISTANCE = 20; // meters
+    private static final int PROXIMITY_ALERT_RADIUS = 150; // meters
 
     IBinder locBinder = new LocationTrackerBinder();
     boolean allowRebind = true;
 
-    boolean placeProximityActive = false;
-    LatLng placeProximityLatLng;
+    PendingIntent currProximityAlertPendingIntent = null;
 
     public class LocationTrackerBinder extends Binder {
         LocationTracker getService() {
@@ -178,6 +178,27 @@ public class LocationTracker extends Service implements LocationListener {
                     LOCATION_INTERVAL, LOCATION_DISTANCE, this);
         } catch (SecurityException ex) {
             // TODO: req permission
+        }
+    }
+
+    public void clearProximityAlert() {
+        if (currProximityAlertPendingIntent != null) {
+            try {
+                locManager.removeProximityAlert(currProximityAlertPendingIntent);
+                currProximityAlertPendingIntent = null;
+            } catch (SecurityException e) {
+            }
+        }
+    }
+
+    public void addTripProximityAlert(LatLng loc) {
+        try {
+            Intent proximityAlertIntent = new Intent("edu.umd.cs.xplore.PROXIMITY_ALERT");
+            currProximityAlertPendingIntent = PendingIntent.getBroadcast(
+                    getApplicationContext(), 0, proximityAlertIntent, 0);
+            locManager.addProximityAlert(loc.latitude, loc.longitude, PROXIMITY_ALERT_RADIUS, -1,
+                    currProximityAlertPendingIntent);
+        } catch (SecurityException e) {
         }
     }
 
