@@ -86,6 +86,8 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         super.onCreate(savedInstanceState);
 
         // Set values
+        prefAdapter = new PreferencesAdapter(this.getApplicationContext());
+        
         if (savedInstanceState == null) {
             selectedPreferences = new HashSet<String>();
             positionsIDs = new HashSet<Integer>();
@@ -157,7 +159,6 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         }
 
         // set up the grid list of preferences
-        prefAdapter = new PreferencesAdapter(this.getApplicationContext());
         GridView prefGridView = (GridView) findViewById(R.id.preferences_grid);
         if (prefGridView == null) {
             Log.e(TAG, "Preference grid view is null");
