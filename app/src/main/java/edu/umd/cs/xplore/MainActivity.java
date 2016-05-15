@@ -10,6 +10,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -70,7 +71,8 @@ public class MainActivity extends FragmentActivity implements
     private HashMap<String, String> matchPreferences;
     private int duration;
     private ArrayList<String> itinerary;
-    private ArrayList<String> itineraryAddresses; // populated by drawRoute()
+    private ArrayList<String> itineraryAddresses; // populated by drawRoute(), incl. origin appended to end for nav
+    private ArrayList<LatLng> itineraryLatLngs; // populated by drawRoute(), incl. origin appended to end for nav
     private int preferenceIdx;
     private String destination;
 
@@ -85,11 +87,13 @@ public class MainActivity extends FragmentActivity implements
     private ArrayList<Polyline> mapLegs = new ArrayList<>();;
 
     private boolean tripActive = false;
+    private boolean shareTrip = false;
     private LocationTracker locService;
     private boolean pendingDrawMap = false;
     private boolean pendingLocService = false;
 
     private int itineraryCursor;
+    private int itineraryBounds;
 
     private ServiceConnection locTrackerConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -128,6 +132,29 @@ public class MainActivity extends FragmentActivity implements
         }
     };
 
+    private BroadcastReceiver proximityAlertReceiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getBooleanExtra(LocationManager.KEY_PROXIMITY_ENTERING, false)) {
+
+                Log.i("LocationTracker", "received TRUE KEY_PROXIMITY_ENTERING intent");
+
+                locService.clearProximityAlert();
+
+                // if at end of trip, change fab action to sharing
+                if (++itineraryCursor >= itineraryBounds) {
+                    tripActive = false;
+                    shareTrip = true;
+
+                    FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.main_fab);
+                    fab.setImageDrawable(getResources().getDrawable(
+                            R.drawable.ic_navigation_white_24dp, getTheme()));
+                }
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -141,12 +168,15 @@ public class MainActivity extends FragmentActivity implements
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!tripActive) {
+                if (tripActive) {
+                    locService.addTripProximityAlert(itineraryLatLngs.get(itineraryCursor));
+                    navigateToAddress(itineraryAddresses.get(itineraryCursor));
+                } else if (shareTrip) {
+                    //TODO: Sharing intent goes here
+                } else {
                     Intent intent = new Intent(MainActivity.this, PlanActivity.class);
                     intent.putExtra(LAST_LOC, locService.getCurrentLocation());
                     startActivity(intent);
-                } else {
-                    navigateToAddress(itineraryAddresses.get(itineraryCursor));
                 }
             }
         });
@@ -253,6 +283,9 @@ public class MainActivity extends FragmentActivity implements
         // Register broadcast receiver for location updates
         registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
 
+        // Register broadcast receiver for proximity alerts
+        registerReceiver(proximityAlertReceiver, new IntentFilter("edu.umd.cs.xplore.PROXIMITY_ALERT"));
+
         // Start loc tracking service if not yet running
         Intent serviceIntent = new Intent(this, LocationTracker.class);
         if (!isMyServiceRunning(LocationTracker.class)) {
@@ -285,8 +318,9 @@ public class MainActivity extends FragmentActivity implements
     @Override
     protected void onDestroy() {
         unbindService(locTrackerConnection);
-        // Unregister broadcast receiver for location updates (in case Activity is destroyed)
+        // Unregister broadcast receivers
         unregisterReceiver(locationReceiver);
+        unregisterReceiver(proximityAlertReceiver);
 
         super.onDestroy();
     }
@@ -354,6 +388,8 @@ public class MainActivity extends FragmentActivity implements
 
         String[] modItineraryArray = new String[modItinerary.size()];
         modItinerary.toArray(modItineraryArray);
+
+        itineraryBounds = modItinerary.size(); // TODO: this should not have to be here; clean this up
 
         // Draw polyline connecting places (up to 23 places allowed by the API for the single request)
         DirectionsAsyncTask routePolylineDrawer = new DirectionsAsyncTask();
@@ -527,6 +563,7 @@ public class MainActivity extends FragmentActivity implements
                 JSONArray routeLegs = directionsResult.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
 
                 itineraryAddresses = new ArrayList<>();
+                itineraryLatLngs = new ArrayList<>();
                 for (int i = 0; i < routeLegs.length(); i++) {
                     JSONObject currLeg = routeLegs.getJSONObject(i);
 
@@ -537,6 +574,8 @@ public class MainActivity extends FragmentActivity implements
                     Marker m = mMap.addMarker(new MarkerOptions().position(startLocLatLng).title(currLeg.getString("end_address")));
                     mapMarkers.add(m);
                     itineraryAddresses.add(currLeg.getString("end_address"));
+                    JSONObject currLatLng = currLeg.getJSONObject("end_location");
+                    itineraryLatLngs.add(new LatLng(currLatLng.getDouble("lat"), currLatLng.getDouble("lng")));
 
                     // Draw PolyLine for each step in the leg
                     // TODO: Store PolyLines so color can be modified as user progresses along journey
