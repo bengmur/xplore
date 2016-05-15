@@ -46,11 +46,13 @@ public class LocationTracker extends Service implements LocationListener {
 
     private boolean activityDestroyed = true;
     private boolean resendAllLocs = false;
+    private boolean resendProximityAlert = false;
 
     private BroadcastReceiver endTripReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             unregisterReceiver(endTripReceiver);
+            unregisterReceiver(proximityAlertReceiver);
 
             Intent openHome = new Intent(Intent.ACTION_MAIN);
             openHome.addCategory(Intent.CATEGORY_HOME);
@@ -59,6 +61,18 @@ public class LocationTracker extends Service implements LocationListener {
 
             stopForeground(true);
             stopSelf();
+        }
+    };
+
+    private BroadcastReceiver proximityAlertReceiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getBooleanExtra(LocationManager.KEY_PROXIMITY_ENTERING, false)) {
+                if (activityDestroyed) {
+                    resendProximityAlert = true;
+                }
+            }
         }
     };
 
@@ -71,6 +85,14 @@ public class LocationTracker extends Service implements LocationListener {
     public IBinder onBind(Intent intent) {
         activityDestroyed = false;
         Log.i(TAG, "Location updates active..");
+
+        if (resendProximityAlert) {
+            resendProximityAlert = false;
+            Intent proximityAlertIntent = new Intent("edu.umd.cs.xplore.PROXIMITY_ALERT");
+            proximityAlertIntent.putExtra(LocationManager.KEY_PROXIMITY_ENTERING, true);
+            sendBroadcast(proximityAlertIntent);
+        }
+
         return locBinder;
     }
     @Override
@@ -84,6 +106,13 @@ public class LocationTracker extends Service implements LocationListener {
     public void onRebind(Intent intent) {
         activityDestroyed = false;
         Log.i(TAG, "Location updates active..");
+
+        if (resendProximityAlert) {
+            resendProximityAlert = false;
+            Intent proximityAlertIntent = new Intent("edu.umd.cs.xplore.PROXIMITY_ALERT");
+            proximityAlertIntent.putExtra(LocationManager.KEY_PROXIMITY_ENTERING, true);
+            sendBroadcast(proximityAlertIntent);
+        }
     }
 
     @Override
@@ -94,6 +123,7 @@ public class LocationTracker extends Service implements LocationListener {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         registerReceiver(endTripReceiver, new IntentFilter("edu.umd.cs.xplore.END_TRIP"));
+        registerReceiver(proximityAlertReceiver, new IntentFilter("edu.umd.cs.xplore.PROXIMITY_ALERT"));
 
         Intent endTripIntent = new Intent("edu.umd.cs.xplore.END_TRIP");
         PendingIntent endTripPendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, endTripIntent, 0);
