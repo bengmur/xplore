@@ -15,6 +15,7 @@ import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 import com.google.android.gms.maps.model.LatLng;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
@@ -31,12 +32,16 @@ import java.util.Locale;
 public class PlanActivity extends AppCompatActivity {
 
     public static final String DURATION = "edu.umd.cs.xplore.DURATION";
+
     private static final String TAG = "PlanActivity";
+    private static final String HOUR_FIELD = "edu.umd.cs.xplore.HOUR_FIELD";
+    private static final String MINUTE_FIELD = "edu.umd.cs.xplore.MINUTE_FIELD";
+    private static final String DESTINATION = "edu.umd.cs.xplore.DESTINATION";
 
     private NumberPicker hourField;
     private NumberPicker minuteField;
     private PlaceAutocompleteFragment autocompleteFragment;
-    private Place destination = null;
+    private String destination;
     private ProgressDialog findLocationsProgressDialog;
     private LatLng lastLoc;
 
@@ -65,8 +70,20 @@ public class PlanActivity extends AppCompatActivity {
         };
         hourField.setFormatter(formatter);
         minuteField.setFormatter(formatter);
-        hourField.setValue(6);
-        minuteField.setValue(30);
+
+        // Set values
+        if (savedInstanceState == null) {
+            hourField.setValue(6);
+            minuteField.setValue(30);
+            destination = null;
+        } else {
+            hourField.setValue(savedInstanceState.getInt(HOUR_FIELD, 6));
+            minuteField.setValue(savedInstanceState.getInt(MINUTE_FIELD, 30));
+            destination = savedInstanceState.getString(DESTINATION, null);
+            if (destination != null) {
+                autocompleteFragment.setText(destination);
+            }
+        }
 
         // Setup autocomplete fragment
         autocompleteFragment = (PlaceAutocompleteFragment)
@@ -74,21 +91,13 @@ public class PlanActivity extends AppCompatActivity {
         autocompleteFragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
             public void onPlaceSelected(Place place) {
-                // TODO: Get info about the selected place.
-                Log.i(TAG, "Place: " + place.getName());
-
-                destination = place;
-                // place.getName();
-                // place.getId();
-                // place.getLatLng();
-                // place.getAddress();
-                // place.getAttributions();
+                destination = place.getName().toString();
+                Log.i(TAG, "Place: " + destination);
             }
 
             @Override
             public void onError(Status status) {
-                // TODO: Handle the error.
-                Log.i(TAG, "An error occurred: " + status);
+                Log.e(TAG, "Error with autocomplete fragment: " + status);
             }
         });
         // autocompleteFragment.setBoundsBias(new LatLngBounds(
@@ -101,13 +110,23 @@ public class PlanActivity extends AppCompatActivity {
         findLocationsProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Log.i(TAG, "In onSaveInstanceState");
+
+        outState.putInt(HOUR_FIELD, hourField.getValue());
+        outState.putInt(MINUTE_FIELD, minuteField.getValue());
+        outState.putString(DESTINATION, destination);
+    }
+
     public void fabClicked(View view) {
         // Get duration
         int hours = hourField.getValue();
         int minutes = minuteField.getValue();
 
         // Get destination
-        String inputDest = (destination == null ? "" : destination.getName().toString());
+        String inputDest = (destination == null) ? "" : destination;
         ArrayList<String> destinations = new ArrayList<String>();
 
         // Find 4 possible destinations for the user. If the user enters something, add that
@@ -182,11 +201,12 @@ public class PlanActivity extends AppCompatActivity {
 
         @Override
         protected String[] doInBackground(String... params) {
-            try {
-                InputStream[] inputStreams = new InputStream[4];
-                HttpURLConnection[] urlConnections = new HttpURLConnection[4];
+            String[] queryResponses = new String[4];
 
-                for (int i = 0; i < params.length; i += 2) {
+            for (int i = 0; i < params.length / 2; i++) {
+                HttpURLConnection urlConnection = null;
+                try {
+                    // Construct request URL string
                     StringBuilder urlStringBuilder = new StringBuilder();
                     urlStringBuilder.append("http://api.geonames.org/findNearbyPlaceNameJSON?lat=");
                     urlStringBuilder.append(URLEncoder.encode(params[i], "UTF-8"));
@@ -197,58 +217,56 @@ public class PlanActivity extends AppCompatActivity {
                     urlStringBuilder.append("&username=");
                     urlStringBuilder.append(URLEncoder.encode(getString(R.string.geonames_username), "UTF-8"));
 
+                    // Convert to URL and open connection
                     URL reqURL = new URL(urlStringBuilder.toString());
-                    HttpURLConnection urlConnection = (HttpURLConnection) reqURL.openConnection();
-                    urlConnections[i / 2] = urlConnection;
+                    urlConnection = (HttpURLConnection) reqURL.openConnection();
 
-                    inputStreams[i / 2] = new BufferedInputStream(urlConnection.getInputStream());
+                    // Open connection and store response
+                    BufferedInputStream stream = new BufferedInputStream(urlConnection.getInputStream());
+                    queryResponses[i] = readStream(stream);
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception in FindLocationName query", e);
+                } finally {
+                    if (urlConnection != null) {
+                        urlConnection.disconnect();
+                    }
                 }
-
-                String[] queryResponses = new String[4];
-
-                // Get results from each URL connection
-                for (int i = 0; i < queryResponses.length; i++) {
-                    queryResponses[i] = readStream(inputStreams[i]);
-                    // Disconnect each url as well
-                    urlConnections[i].disconnect(); // TODO: put this in a "finally" block
-
-                }
-
-                return queryResponses;
-            } catch (Exception e) {
-                // TODO: handle errors; particularly an error resulting from no internet access
-                Log.e(TAG, "Exception in FindLocationName", e);
-                return new String[]{""};
             }
+
+            return queryResponses;
         }
 
         @Override
         protected void onPostExecute(String[] results) {
-            try {
-                // parse request result into JSON object
-                for (String result : results) {
+            // Parse request results into JSON objects
+            for (String result : results) {
+                try {
+                    // Get the name of the location from the JSON object and add it to ArrayList
                     JSONObject nameQueryResult = new JSONObject(result);
-
-                    // get the name of the location from the JSON object and add it to ArrayList
-                    JSONObject location = nameQueryResult.getJSONArray("geonames").getJSONObject(0);
-                    destinations.add(location.get("name").toString());
-                    Log.i(TAG, location.get("name").toString());
+                    JSONArray geonamesArray = nameQueryResult.getJSONArray("geonames");
+                    if (geonamesArray.length() > 0) {
+                        JSONObject location = geonamesArray.getJSONObject(0);
+                        destinations.add(location.get("name").toString());
+                        Log.i(TAG, location.get("name").toString());
+                    } else {
+                        Log.e(TAG, "No places returned at given distance");
+                    }
+                } catch (Exception e) {
+                    // Report exception, but continue parsing other results
+                    Log.e(TAG, "JSON parsing exception in FindLocationName", e);
                 }
-
-                // Close progress bar
-                findLocationsProgressDialog.hide();
-
-                // Start preferences activity, while passing down destinations data
-                Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
-                preferencesIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
-                preferencesIntent.putStringArrayListExtra(Intent.EXTRA_STREAM, (ArrayList<String>) destinations);
-                preferencesIntent.putExtra(DURATION, duration);
-                preferencesIntent.setType("possibleDestinations");
-                startActivity(preferencesIntent);
-            } catch (Exception e) {
-                // TODO: handle errors
-                Log.e(TAG, "JSON parsing exception in FindLocationName", e);
             }
+
+            // Close progress bar
+            findLocationsProgressDialog.hide();
+
+            // Start preferences activity, while passing down destinations data
+            Intent preferencesIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
+            preferencesIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
+            preferencesIntent.putStringArrayListExtra(Intent.EXTRA_STREAM, (ArrayList<String>) destinations);
+            preferencesIntent.putExtra(DURATION, duration);
+            preferencesIntent.setType("possibleDestinations");
+            startActivity(preferencesIntent);
         }
     }
 }

@@ -394,10 +394,13 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
         @Override
         protected String[] doInBackground(String... params) {
-            try {
-                ArrayList<InputStream> inputStreams = new ArrayList<InputStream>();
-                ArrayList<HttpsURLConnection> urlConnections = new ArrayList<HttpsURLConnection>();
-                for (String preference : preferences) {
+            String[] queryResponses = new String[preferences.size()];
+            int i = 0;
+
+            for (String preference : preferences) {
+                HttpsURLConnection urlConnection = null;
+                try {
+                    // Construct URL request
                     StringBuilder urlStringBuilder = new StringBuilder();
                     urlStringBuilder.append("https://maps.googleapis.com/maps/api/place/nearbysearch/json?key=");
                     urlStringBuilder.append(getString(R.string.google_service_key));
@@ -408,33 +411,29 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                     urlStringBuilder.append("&keyword=");
                     urlStringBuilder.append(URLEncoder.encode(PreferenceList.getInstance().getTitleFromTag(preference), "UTF-8"));
 
+                    // Convert to URL and open connection
                     URL reqURL = new URL(urlStringBuilder.toString());
-                    HttpsURLConnection urlConnection = (HttpsURLConnection) reqURL.openConnection();
-                    urlConnections.add(urlConnection);
-                    inputStreams.add(new BufferedInputStream(urlConnection.getInputStream()));
+                    urlConnection = (HttpsURLConnection) reqURL.openConnection();
+
+                    // Open connection and store response
+                    BufferedInputStream stream = new BufferedInputStream(urlConnection.getInputStream());
+                    queryResponses[i++] = readStream(stream);
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception during API calls.", e);
+                } finally {
+                    if (urlConnection != null) {
+                        urlConnection.disconnect();
+                    }
                 }
-
-                String[] queryResponses = new String[inputStreams.size()];
-
-                // Get results from each URL connection
-                for (int i = 0; i < inputStreams.size(); i++) {
-                    queryResponses[i] = readStream(inputStreams.get(i));
-                    // Disconnect each url as well
-                    urlConnections.get(i).disconnect(); // TODO: put this in a "finally" block
-                }
-
-                return queryResponses;
-            } catch (Exception e) {
-                // TODO: handle errors; particularly an error resulting from no internet access
-                Log.e(TAG, "Exception during API calls.", e);
-                return new String[]{""};
             }
+
+            return queryResponses;
         }
 
         @Override
         protected void onPostExecute(String[] results) {
-            try {
-                for (int i = 0; i < preferences.size(); i++) {
+            for (int i = 0; i < preferences.size(); i++) {
+                try {
                     // parse request result into JSON object
                     JSONObject directionsResult = new JSONObject(results[i]);
 
@@ -452,10 +451,9 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                         matchPreferences.put(placeId, preferences.get(i));
                     }
                     matches.put(preferences.get(i), placeIds);
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception parsing JSON responses.", e);
                 }
-            } catch (Exception e) {
-                // TODO: handle errors
-                Log.e(TAG, "Exception parsing responses.", e);
             }
 
             findPlacesProgressDialog.hide();
