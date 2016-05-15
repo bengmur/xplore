@@ -588,11 +588,13 @@ public class MainActivity extends FragmentActivity implements
                     JSONObject endLocJSON = currLeg.getJSONObject("end_location");
                     LatLng endLocLatLng = new LatLng(endLocJSON.getDouble("lat"), endLocJSON.getDouble("lng"));
 
-                    Marker m = mMap.addMarker(new MarkerOptions().position(endLocLatLng).title(currLeg.getString("end_address")));
-                    mapMarkers.add(m);
+                    if (i == routeLegs.length() - 1) {
+                        Marker m = mMap.addMarker(new MarkerOptions().position(endLocLatLng).title(currLeg.getString("end_address")));
+                        mapMarkers.add(m);
+                    }
+
                     itineraryAddresses.add(currLeg.getString("end_address"));
-                    JSONObject currLatLng = currLeg.getJSONObject("end_location");
-                    itineraryLatLngs.add(new LatLng(currLatLng.getDouble("lat"), currLatLng.getDouble("lng")));
+                    itineraryLatLngs.add(endLocLatLng);
 
                     // Draw PolyLine for each step in the leg
                     // TODO: Store PolyLines so color can be modified as user progresses along journey
