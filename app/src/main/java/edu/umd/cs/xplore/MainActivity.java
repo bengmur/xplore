@@ -52,6 +52,8 @@ public class MainActivity extends FragmentActivity implements
         OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
 
+    public static final String LAST_LOC = "edu.umd.cs.xplore.LAST_LOC";
+
     private static final String TAG = "MainActivity";
 
     private GoogleMap mMap;
@@ -105,7 +107,7 @@ public class MainActivity extends FragmentActivity implements
             public void onClick(View view) {
                 Intent intent = new Intent(MainActivity.this, PlanActivity.class);
                 // TODO: change this from hardcoded to actual last location
-                intent.putExtra("lastLoc", new LatLng(38.988205, -76.943566));
+                intent.putExtra(LAST_LOC, new LatLng(38.988205, -76.943566));
                 startActivity(intent);
             }
         });

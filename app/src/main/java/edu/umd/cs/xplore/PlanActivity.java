@@ -47,7 +47,8 @@ public class PlanActivity extends AppCompatActivity {
 
         // Get last location from MainActivity intent
         Intent intent = getIntent();
-        lastLoc = (LatLng) intent.getExtras().get("lastLoc");
+        lastLoc = intent.getParcelableExtra(MainActivity.LAST_LOC);
+        Log.i(TAG, "Got last loc: " + lastLoc.toString());
 
         // Setup number pickers
         hourField = (NumberPicker) findViewById(R.id.hour_field);
@@ -117,7 +118,7 @@ public class PlanActivity extends AppCompatActivity {
         // double currLong = -77.4105;
 
         double currLat = lastLoc.latitude;
-        double  currLong = lastLoc.longitude;
+        double currLong = lastLoc.longitude;
 
         /* Using duration, limit travel to final destination and back to origin to 40%
            of duration, so 20% for each way, assuming speed of 60mph. Total duration in
