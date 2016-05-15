@@ -3,13 +3,17 @@ package edu.umd.cs.xplore;
 import android.Manifest;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.design.widget.BottomSheetBehavior;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -26,8 +30,10 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -40,6 +46,7 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Array;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -63,6 +70,7 @@ public class MainActivity extends FragmentActivity implements
     private HashMap<String, String> matchPreferences;
     private int duration;
     private ArrayList<String> itinerary;
+    private ArrayList<String> itineraryAddresses; // populated by drawRoute()
     private int preferenceIdx;
     private String destination;
 
@@ -71,6 +79,32 @@ public class MainActivity extends FragmentActivity implements
     private RecyclerView recyclerView;
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
+    LatLng initLoc;
+
+    private ArrayList<Marker> mapMarkers = new ArrayList<>();
+    private ArrayList<Polyline> mapLegs = new ArrayList<>();;
+
+    private boolean tripActive = false;
+    private LocationTracker locService;
+    private boolean pendingDrawMap = false;
+    private boolean pendingLocService = false;
+
+    private int itineraryCursor;
+
+    private ServiceConnection locTrackerConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            locService = ((LocationTracker.LocationTrackerBinder)service).getService();
+
+            if (pendingLocService) {
+                pendingLocService = false;
+                drawRoute();
+            }
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            locService = null;
+        }
+    };
 
     private BroadcastReceiver locationReceiver = new BroadcastReceiver() {
 
@@ -87,7 +121,9 @@ public class MainActivity extends FragmentActivity implements
                 newLocs.addAll((ArrayList<LatLng>) bundle.get("locs"));
                 actualLocations.addAll((ArrayList<LatLng>) bundle.get("locs"));
 
-                drawMovingLoc();
+                if (tripActive) {
+                    drawMovingLoc();
+                }
             }
         }
     };
@@ -105,10 +141,13 @@ public class MainActivity extends FragmentActivity implements
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, PlanActivity.class);
-                // TODO: change this from hardcoded to actual last location
-                intent.putExtra(LAST_LOC, new LatLng(38.988205, -76.943566));
-                startActivity(intent);
+                if (!tripActive) {
+                    Intent intent = new Intent(MainActivity.this, PlanActivity.class);
+                    intent.putExtra(LAST_LOC, locService.getCurrentLocation());
+                    startActivity(intent);
+                } else {
+                    navigateToAddress(itineraryAddresses.get(itineraryCursor));
+                }
             }
         });
 
@@ -150,6 +189,8 @@ public class MainActivity extends FragmentActivity implements
                             Log.e(TAG, "Position of just added place not found");
                         }
                         recyclerView.getAdapter().notifyItemInserted(newPosition);
+
+                        drawRoute();
                     }
 
                     // Allow for undo action
@@ -175,6 +216,8 @@ public class MainActivity extends FragmentActivity implements
                                         recyclerView.getAdapter().notifyItemInserted(position);
                                         recyclerView.scrollToPosition(position);
                                     }
+
+                                    drawRoute();
                                 }
                             });
                     snackbar.show();
@@ -195,59 +238,57 @@ public class MainActivity extends FragmentActivity implements
         if (Intent.ACTION_SEND.equals(action) && type != null) {
             if ("list/preferences".equals(type)) {
                 handleSendPreferences(intent);
+
+                tripActive = true;
+                itineraryCursor = 0;
+                fab.setImageDrawable(getResources().getDrawable(
+                        R.drawable.ic_navigation_white_24dp, getTheme()));
             } else {
                 //TODO Handle other intents
             }
         } else {
             //TODO Handle other intents
         }
+
+        // Register broadcast receiver for location updates
+        registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
+
+        // Start loc tracking service if not yet running
+        Intent serviceIntent = new Intent(this, LocationTracker.class);
+        if (!isMyServiceRunning(LocationTracker.class)) {
+            startService(serviceIntent);
+        }
+        // Bind to loc tracking service
+        bindService(serviceIntent, locTrackerConnection, 0);
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-
-        // Send broadcast that activity is starting and needs ALL locations from a previously started
-        // service (if Activity was started earlier)
-        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
-        activityStatusIntent.putExtra("stopStatus", false);
-        sendBroadcast(activityStatusIntent);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
-        // Register broadcast receiver for location updates
-        registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
-
-        // Send broadcast that activity is ready to receive location updates
-        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
-        activityStatusIntent.putExtra("pauseStatus", false);
-        sendBroadcast(activityStatusIntent);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
-        // Send broadcast that activity is not able to receive location updates
-        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
-        activityStatusIntent.putExtra("pauseStatus", true);
-        sendBroadcast(activityStatusIntent);
-
-        // Unregister broadcast receiver for location updates (in case Activity is stopped)
-        unregisterReceiver(locationReceiver);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+    }
 
-        // Send broadcast that activity is stopping and will need ALL locations re-sent when started
-        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
-        activityStatusIntent.putExtra("stopStatus", true);
-        sendBroadcast(activityStatusIntent);
+    @Override
+    protected void onDestroy() {
+        unbindService(locTrackerConnection);
+        // Unregister broadcast receiver for location updates (in case Activity is destroyed)
+        unregisterReceiver(locationReceiver);
+
+        super.onDestroy();
     }
 
     /**
@@ -268,28 +309,55 @@ public class MainActivity extends FragmentActivity implements
         // coordinates of current location to the device under "Location Controls".
         enableMyLocation();
 
-        // Register broadcast receiver
-        registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
+        CameraPosition initPos = new CameraPosition.Builder()
+                .target(new LatLng(38.904679, -77.036021))
+                .zoom(10)
+                .build();
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(initPos));
 
-        // Start loc tracking service if not yet running
-        if (!isMyServiceRunning(LocationTracker.class)) {
-            Intent serviceIntent = new Intent(this, LocationTracker.class);
-            startService(serviceIntent);
+        if (pendingDrawMap) {
+            pendingDrawMap = false;
+            drawRoute();
+        }
+    }
+
+    // Clear old routing on any updates to itinerary
+    private void clearRoute() {
+        for (Marker m : mapMarkers) {
+            m.remove();
         }
 
-        // Sample addresses for testing prior to integration with actual initial places
-        // These can be addresses, precise location names, etc. (anything that Google Maps can find the *correct* coordinates for)
-        // TODO: use current location for start/end points
-        String[] addrSamples = {"12060 Cherry Hill Rd, Silver Spring, MD 20904",
-                "10135 Colesville Rd, Silver Spring, MD 20901",
-                "10161 New Hampshire Ave, Silver Spring, MD 20903",
-                "907 Ellsworth Dr, Silver Spring, MD 20910",
-                "5506 Cherrywood Ln, Greenbelt, MD 20770"};
+        for (Polyline l : mapLegs) {
+            l.remove();
+        }
+    }
+
+    private void drawRoute() {
+        if (mMap == null) {
+            pendingDrawMap = true;
+            return;
+        }
+
+        if (locService == null) {
+            pendingLocService = true;
+            return;
+        }
+
+        clearRoute();
+
+        ArrayList<String> modItinerary = new ArrayList<String>(itinerary);
+        if (initLoc == null) {
+            initLoc = locService.getCurrentLocation();
+        }
+        String initLocStr = initLoc.latitude + ", " + initLoc.longitude;
+        modItinerary.add(0, initLocStr);
+
+        String[] modItineraryArray = new String[modItinerary.size()];
+        modItinerary.toArray(modItineraryArray);
 
         // Draw polyline connecting places (up to 23 places allowed by the API for the single request)
         DirectionsAsyncTask routePolylineDrawer = new DirectionsAsyncTask();
-        routePolylineDrawer.execute(addrSamples);
-
+        routePolylineDrawer.execute(modItineraryArray);
     }
 
     private String putNewPlaceInItinerary() {
@@ -342,6 +410,8 @@ public class MainActivity extends FragmentActivity implements
             Log.i(TAG, "Found place = " + convertIdToName(place));
         }
         Log.i(TAG, "Itinerary = " + convertIdsToNames(itinerary));
+
+        drawRoute();
     }
 
     private String convertIdToName(String id) {
@@ -411,11 +481,104 @@ public class MainActivity extends FragmentActivity implements
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 
+    private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected String doInBackground(String... params) {
+            try {
+                StringBuilder urlStringBuilder = new StringBuilder();
+                urlStringBuilder.append("https://maps.googleapis.com/maps/api/directions/json?origin=");
+                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
+                urlStringBuilder.append("&destination=");
+                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
+                urlStringBuilder.append("&waypoints=");
+
+                // ignore initial origin, which is also final destination, so start iterating at i = 1
+                // ignore final waypoint to omit final separating "|" character, so end at prior to last element
+                for (int i = 1; i < params.length - 1; i++) {
+                    urlStringBuilder.append(URLEncoder.encode("place_id:" + params[i] + "|", "UTF-8"));
+                }
+                urlStringBuilder.append(URLEncoder.encode("place_id:" + params[params.length - 1], "UTF-8"));
+                urlStringBuilder.append("&key=AIzaSyAOzEWOLOBTMvslQTtB4zBQOWwe2t88mAI");
+
+                URL reqURL = new URL(urlStringBuilder.toString());
+
+                Log.i("URL", urlStringBuilder.toString());
+
+                HttpsURLConnection urlConnection = (HttpsURLConnection) reqURL.openConnection();
+                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                String queryResponse = readStream(in);
+                urlConnection.disconnect(); // TODO: put this in a "finally" block
+
+                return queryResponse;
+            } catch (Exception e) {
+                // TODO: handle errors; particularly an error resulting from no internet access
+                return "";
+            }
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            try {
+                // parse request result into JSON object
+                JSONObject directionsResult = new JSONObject(result);
+
+                // using first route by default, since Google's navigation intents don't allow specifying waypoints
+                JSONArray routeLegs = directionsResult.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
+
+                itineraryAddresses = new ArrayList<>();
+                for (int i = 0; i < routeLegs.length(); i++) {
+                    JSONObject currLeg = routeLegs.getJSONObject(i);
+
+                    // Add a marker on end location of current leg
+                    JSONObject startLocJSON = currLeg.getJSONObject("start_location");
+                    LatLng startLocLatLng = new LatLng(startLocJSON.getDouble("lat"), startLocJSON.getDouble("lng"));
+
+                    Marker m = mMap.addMarker(new MarkerOptions().position(startLocLatLng).title(currLeg.getString("end_address")));
+                    mapMarkers.add(m);
+                    itineraryAddresses.add(currLeg.getString("end_address"));
+
+                    // Draw PolyLine for each step in the leg
+                    // TODO: Store PolyLines so color can be modified as user progresses along journey
+                    JSONArray currLegSteps = currLeg.getJSONArray("steps");
+                    for (int j = 0; j < currLegSteps.length(); j++) {
+                        String encodedPolyline = currLegSteps.getJSONObject(j).getJSONObject("polyline").getString("points");
+                        List<LatLng> pointsList = PolyUtil.decode(encodedPolyline);
+
+                        Polyline line = mMap.addPolyline(new PolylineOptions()
+                                .addAll(pointsList)
+                                .width(20)
+                                .color(Color.argb(255, 170, 170, 170)));
+
+                        mapLegs.add(line);
+                    }
+                }
+
+                // center camera on entire route bounds (position & zoom)
+                JSONObject routeBounds = directionsResult.getJSONArray("routes").getJSONObject(0).getJSONObject("bounds");
+                LatLng southwestBound = new LatLng(routeBounds.getJSONObject("southwest").getDouble("lat"),
+                        routeBounds.getJSONObject("southwest").getDouble("lng"));
+                LatLng northeastBound = new LatLng(routeBounds.getJSONObject("northeast").getDouble("lat"),
+                        routeBounds.getJSONObject("northeast").getDouble("lng"));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(new LatLngBounds(southwestBound, northeastBound), 400));
+            } catch (Exception e) {
+                // TODO: handle errors
+            }
+        }
+    }
+
     private void drawMovingLoc() {
         Polyline line = mMap.addPolyline(new PolylineOptions()
                 .addAll(newLocs)
                 .width(20)
-                .color(Color.RED));
+                .color(Color.argb(255, 0, 191, 255)));
+    }
+
+    private void navigateToAddress(String address) {
+        Uri navIntentURI = Uri.parse("google.navigation:q=" + address);
+        Intent navIntent = new Intent(Intent.ACTION_VIEW, navIntentURI);
+        navIntent.setPackage("com.google.android.apps.maps");
+        startActivity(navIntent);
     }
 
     private String readStream(InputStream is) {
@@ -456,7 +619,7 @@ public class MainActivity extends FragmentActivity implements
                     // TODO: handle this more cleanly instead of just exiting out
                     finish();
                 }
-                break;
+                return;
             }
 
             // other 'case' lines to check for other
@@ -473,82 +636,5 @@ public class MainActivity extends FragmentActivity implements
             }
         }
         return false;
-    }
-
-    private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
-
-        @Override
-        protected String doInBackground(String... params) {
-            try {
-                StringBuilder urlStringBuilder = new StringBuilder();
-                urlStringBuilder.append("https://maps.googleapis.com/maps/api/directions/json?origin=");
-                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
-                urlStringBuilder.append("&destination=");
-                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
-                urlStringBuilder.append("&waypoints=");
-
-                // ignore initial origin, which is also final destination, so start iterating at i = 1
-                // ignore final waypoint to omit final separating "|" character, so end at prior to last element
-                for (int i = 1; i < params.length - 1; i++) {
-                    urlStringBuilder.append(URLEncoder.encode(params[i] + "|", "UTF-8"));
-                }
-                urlStringBuilder.append(URLEncoder.encode(params[params.length - 1], "UTF-8"));
-
-                URL reqURL = new URL(urlStringBuilder.toString());
-                HttpsURLConnection urlConnection = (HttpsURLConnection) reqURL.openConnection();
-                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-                String queryResponse = readStream(in);
-                urlConnection.disconnect(); // TODO: put this in a "finally" block
-
-                return queryResponse;
-            } catch (Exception e) {
-                // TODO: handle errors; particularly an error resulting from no internet access
-                return "";
-            }
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            try {
-                // parse request result into JSON object
-                JSONObject directionsResult = new JSONObject(result);
-
-                // using first route by default, since Google's navigation intents don't allow specifying waypoints
-                JSONArray routeLegs = directionsResult.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
-
-                for (int i = 0; i < routeLegs.length(); i++) {
-                    JSONObject currLeg = routeLegs.getJSONObject(i);
-
-                    // Add a marker on start location of current leg
-                    JSONObject startLocJSON = currLeg.getJSONObject("start_location");
-                    LatLng startLocLatLng = new LatLng(startLocJSON.getDouble("lat"), startLocJSON.getDouble("lng"));
-                    //TODO: Change marker name to actual location name, add icon property too maybe?
-                    mMap.addMarker(new MarkerOptions().position(startLocLatLng).title("Chipotle").snippet(currLeg.getString("start_address")));
-
-                    // Draw PolyLine for each step in the leg
-                    // TODO: Store PolyLines so color can be modified as user progresses along journey
-                    JSONArray currLegSteps = currLeg.getJSONArray("steps");
-                    for (int j = 0; j < currLegSteps.length(); j++) {
-                        String encodedPolyline = currLegSteps.getJSONObject(j).getJSONObject("polyline").getString("points");
-                        List<LatLng> pointsList = PolyUtil.decode(encodedPolyline);
-
-                        Polyline line = mMap.addPolyline(new PolylineOptions()
-                                .addAll(pointsList)
-                                .width(20)
-                                .color(Color.CYAN));
-                    }
-                }
-
-                // center camera on entire route bounds (position & zoom)
-                JSONObject routeBounds = directionsResult.getJSONArray("routes").getJSONObject(0).getJSONObject("bounds");
-                LatLng southwestBound = new LatLng(routeBounds.getJSONObject("southwest").getDouble("lat"),
-                        routeBounds.getJSONObject("southwest").getDouble("lng"));
-                LatLng northeastBound = new LatLng(routeBounds.getJSONObject("northeast").getDouble("lat"),
-                        routeBounds.getJSONObject("northeast").getDouble("lng"));
-                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(new LatLngBounds(southwestBound, northeastBound), 50));
-            } catch (Exception e) {
-                // TODO: handle errors
-            }
-        }
     }
 }

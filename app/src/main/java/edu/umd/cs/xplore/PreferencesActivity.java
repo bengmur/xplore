@@ -3,6 +3,7 @@ package edu.umd.cs.xplore;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -101,6 +102,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
             ArrayAdapter<String> destAdapter =
                     new ArrayAdapter<String>(this, R.layout.spinner_item, destinationList);
             destAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
+            destSpinner.getBackground().setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_ATOP);
             destSpinner.setAdapter(destAdapter);
         }
 
