@@ -157,7 +157,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         if (prefGridView == null) {
             Log.e(TAG, "Preference grid view is null");
         } else {
-            prefGridView.setAdapter(prefAdapter);
+            prefGridView.setAdapter(prefAdapter, positionsIDs);
 
             // when a preference item is selected, it should be highlighted and should
             // be added to list of preferences to be passed to the next Activity
@@ -176,13 +176,6 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                     }
                 }
             });
-        }
-
-        if (savedInstanceState != null) {
-            for (Integer i : positionsIDs) {
-                View prefItemView = (View) prefAdapter.getItem(i);
-                prefItemView.setBackgroundResource(R.color.colorAccent);
-            }
         }
 
         // Connected to Google Places API
