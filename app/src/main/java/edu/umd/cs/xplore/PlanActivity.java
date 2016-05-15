@@ -201,17 +201,18 @@ public class PlanActivity extends AppCompatActivity {
 
         @Override
         protected String[] doInBackground(String... params) {
-            String[] queryResponses = new String[4];
+            int length = params.length;
+            String[] queryResponses = new String[length];
 
-            for (int i = 0; i < params.length / 2; i++) {
+            for (int i = 0; i < length; i++) {
                 HttpURLConnection urlConnection = null;
                 try {
                     // Construct request URL string
                     StringBuilder urlStringBuilder = new StringBuilder();
                     urlStringBuilder.append("http://api.geonames.org/findNearbyPlaceNameJSON?lat=");
-                    urlStringBuilder.append(URLEncoder.encode(params[i], "UTF-8"));
+                    urlStringBuilder.append(URLEncoder.encode(params[2*i], "UTF-8"));
                     urlStringBuilder.append("&lng=");
-                    urlStringBuilder.append(URLEncoder.encode(params[i + 1], "UTF-8"));
+                    urlStringBuilder.append(URLEncoder.encode(params[2*i + 1], "UTF-8"));
                     urlStringBuilder.append("&cities="); // location should have min population of 15000
                     urlStringBuilder.append(URLEncoder.encode(getString(R.string.geonames_min_population), "UTF-8"));
                     urlStringBuilder.append("&username=");
