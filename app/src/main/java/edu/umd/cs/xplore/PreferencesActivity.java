@@ -152,12 +152,12 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         }
 
         // set up the grid list of preferences
-        prefAdapter = new PreferencesAdapter(this.getApplicationContext());
+        prefAdapter = new PreferencesAdapter(this.getApplicationContext(), positionsIDs);
         GridView prefGridView = (GridView) findViewById(R.id.preferences_grid);
         if (prefGridView == null) {
             Log.e(TAG, "Preference grid view is null");
         } else {
-            prefGridView.setAdapter(prefAdapter, positionsIDs);
+            prefGridView.setAdapter(prefAdapter);
 
             // when a preference item is selected, it should be highlighted and should
             // be added to list of preferences to be passed to the next Activity

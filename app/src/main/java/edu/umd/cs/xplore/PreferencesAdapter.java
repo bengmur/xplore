@@ -17,6 +17,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 /**
  * Adapter for creating the preferences grid list
@@ -26,9 +27,11 @@ public class PreferencesAdapter extends BaseAdapter {
     private CardView[] cards = new CardView[10];
     private Context prefContext;
     private PreferenceList prefList = PreferenceList.getInstance();
+    private HashSet<Integer> selectedPositionIds;
 
-    public PreferencesAdapter(Context context) {
+    public PreferencesAdapter(Context context, HashSet<Integer> positionIds) {
         prefContext = context;
+        selectedPositionIds = positionIds;
     }
 
     @Override
@@ -75,8 +78,10 @@ public class PreferencesAdapter extends BaseAdapter {
         curImageView.setImageResource(prefList.getImageId(position));
         curTextView.setText(prefList.getPreferenceTitle(position));
         curTextView.setTextColor(Color.BLACK);
-
         cards[position] = prefCardView;
+        if (selectedPositionIds.contains(position)) {
+            prefCardView.setBackgroundResource(R.color.colorAccent);
+        }
         return prefCardView;
     }
 
