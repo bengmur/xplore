@@ -26,6 +26,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -179,6 +180,7 @@ public class MainActivity extends FragmentActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // Get fields
         boolean saved = false;
@@ -421,12 +423,13 @@ public class MainActivity extends FragmentActivity implements
 
     @Override
     protected void onDestroy() {
+        super.onDestroy();
         unbindService(locTrackerConnection);
         // Unregister broadcast receivers
         unregisterReceiver(locationReceiver);
         unregisterReceiver(proximityAlertReceiver);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        super.onDestroy();
     }
 
     /**
@@ -619,6 +622,7 @@ public class MainActivity extends FragmentActivity implements
         Polyline line = mMap.addPolyline(new PolylineOptions()
                 .addAll(newLocs)
                 .width(20)
+                .zIndex(101)
                 .color(Color.argb(255, 0, 191, 255)));
     }
 
@@ -758,6 +762,7 @@ public class MainActivity extends FragmentActivity implements
                         Polyline line = mMap.addPolyline(new PolylineOptions()
                                 .addAll(pointsList)
                                 .width(20)
+                                .zIndex(100)
                                 .color(Color.argb(255, 170, 170, 170)));
 
                         mapLegs.add(line);
