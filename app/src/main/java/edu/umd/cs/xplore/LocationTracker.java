@@ -11,14 +11,13 @@ import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.maps.model.LatLng;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 public class LocationTracker extends Service implements LocationListener {
@@ -28,37 +27,35 @@ public class LocationTracker extends Service implements LocationListener {
     private static final int LOCATION_INTERVAL = 3000; //milliseconds
     private static final float LOCATION_DISTANCE = 20; // meters
 
+    IBinder locBinder = new LocationTrackerBinder();
+    boolean allowRebind = true;
+
+    public class LocationTrackerBinder extends Binder {
+        LocationTracker getService() {
+            // Return this instance of LocalService so clients can call public methods
+            return LocationTracker.this;
+        }
+    }
+
     // Stores locations until they are able to be sent to the Activity (i.e. it is not paused)
     private ArrayList<LatLng> locationUpdates = new ArrayList<LatLng>();
     private ArrayList<LatLng> allLocs = new ArrayList<LatLng>();
 
-    private boolean activityPaused = false;
-    private boolean activityStopped = false;
+    private boolean activityDestroyed = true;
     private boolean resendAllLocs = false;
-    private BroadcastReceiver activityStateReceiver = new BroadcastReceiver() {
 
+    private BroadcastReceiver endTripReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.hasExtra("pauseStatus")) {
-                activityPaused = intent.getExtras().getBoolean("pauseStatus");
+            unregisterReceiver(endTripReceiver);
 
-                if (activityPaused) {
-                    Log.d(TAG, "Activity paused");
-                } else {
-                    Log.d(TAG, "Activity resumed");
-                }
-            }
+            Intent openHome = new Intent(Intent.ACTION_MAIN);
+            openHome.addCategory(Intent.CATEGORY_HOME);
+            openHome.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(openHome);
 
-            if (intent.hasExtra("stopStatus")) {
-                activityStopped = intent.getExtras().getBoolean("stopStatus");
-
-                if (activityStopped == false) {
-                    Log.d(TAG, "Activity started");
-                    resendAllLocs = true;
-                } else {
-                    Log.d(TAG, "Activity stopped");
-                }
-            }
+            stopForeground(true);
+            stopSelf();
         }
     };
 
@@ -69,7 +66,20 @@ public class LocationTracker extends Service implements LocationListener {
 
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        activityDestroyed = false;
+        Log.i(TAG, "Location updates active..");
+        return locBinder;
+    }
+    @Override
+    public boolean onUnbind(Intent intent) {
+        activityDestroyed = true;
+        Log.i(TAG, "Location updates inactive..");
+        return allowRebind;
+    }
+    @Override
+    public void onRebind(Intent intent) {
+        activityDestroyed = false;
+        Log.i(TAG, "Location updates active..");
     }
 
     @Override
@@ -79,7 +89,10 @@ public class LocationTracker extends Service implements LocationListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        registerReceiver(activityStateReceiver, new IntentFilter("edu.umd.cs.xplore.MAIN_STATUS"));
+        registerReceiver(endTripReceiver, new IntentFilter("edu.umd.cs.xplore.END_TRIP"));
+
+        Intent endTripIntent = new Intent("edu.umd.cs.xplore.END_TRIP");
+        PendingIntent endTripPendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, endTripIntent, 0);
 
         Notification notification = new Notification.Builder(this)
                 .setSmallIcon(R.mipmap.ic_launcher)
@@ -87,12 +100,15 @@ public class LocationTracker extends Service implements LocationListener {
                         R.mipmap.ic_launcher))
                 .setContentTitle("Xplore")
                 .setContentText("Mapping your trip progress...")
+                .addAction(new Notification.Action.Builder(R.drawable.ic_close_black_24dp, "End trip", endTripPendingIntent).build())
                 .build();
 
-        Intent notificationIntent = new Intent(this, MainActivity.class);
+        Intent notificationIntent = new Intent(getApplicationContext(), MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
         notification.contentIntent = pendingIntent;
         startForeground(1, notification);
+
+        super.onStartCommand(intent, flags, startId);
 
         return START_STICKY;
     }
@@ -102,7 +118,7 @@ public class LocationTracker extends Service implements LocationListener {
         locationUpdates.add(new LatLng(loc.getLatitude(), loc.getLongitude()));
         allLocs.add(new LatLng(loc.getLatitude(), loc.getLongitude()));
 
-        if (resendAllLocs) {
+        if (activityDestroyed) {
             Log.d(TAG, "Resending all locations..");
             Intent locBrdIntent = new Intent("edu.umd.cs.xplore.LOC_UPDATE");
             locBrdIntent.putExtra("locs", allLocs);
@@ -110,7 +126,7 @@ public class LocationTracker extends Service implements LocationListener {
 
             locationUpdates.clear(); // clear updates since they're included in the "allLocs" list
             resendAllLocs = false;
-        } else if (!activityPaused && !activityStopped) {
+        } else {
             Log.d(TAG, "Sending location updates..");
             Intent locBrdIntent = new Intent("edu.umd.cs.xplore.LOC_UPDATE");
             locBrdIntent.putExtra("locs", locationUpdates);
@@ -124,6 +140,20 @@ public class LocationTracker extends Service implements LocationListener {
     public void onProviderDisabled(String s){
     }
     public void onStatusChanged(String s, int i, Bundle b){
+    }
+
+    public LatLng getCurrentLocation() {
+        try {
+            Location lastLoc = locManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            return new LatLng(lastLoc.getLatitude(), lastLoc.getLongitude());
+        } catch (SecurityException ex) {
+            // TODO: req permission
+        }
+        if (allLocs.size() > 1) {
+            return allLocs.get(allLocs.size() - 1);
+        } else {
+            return null;
+        }
     }
 
     public void subscribeToLocationUpdates() {
