@@ -47,7 +47,6 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Array;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -91,6 +90,7 @@ public class MainActivity extends FragmentActivity implements
     private LocationTracker locService;
     private boolean pendingDrawMap = false;
     private boolean pendingLocService = false;
+    private boolean navStarted = false;
 
     private int itineraryCursor;
     private int itineraryBounds;
@@ -171,6 +171,9 @@ public class MainActivity extends FragmentActivity implements
                 if (tripActive) {
                     locService.addTripProximityAlert(itineraryLatLngs.get(itineraryCursor));
                     navigateToAddress(itineraryAddresses.get(itineraryCursor));
+                    navStarted = true;
+                    mBottomSheetBehavior.setHideable(true);
+                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
                 } else if (shareTrip) {
                     //TODO: Sharing intent goes here
                 } else {
@@ -197,63 +200,70 @@ public class MainActivity extends FragmentActivity implements
 
             @Override
             public void onSwiped(final RecyclerView.ViewHolder viewHolder, int swipeDir) {
-                // Retrieve detected position in list
-                final int position = viewHolder.getAdapterPosition();
-                if (position < 0) {
-                    Log.e(TAG, "Cannot remove position " + position + " from list");
-                } else {
-                    // Remove place from list
-                    final String place = itinerary.remove(position);
-                    if (place == null) {
-                        Log.e(TAG, "Removed place is null");
-                    }
-                    recyclerView.getAdapter().notifyItemRemoved(position);
-
-                    // Put new place in list
-                    final String newPlace = putNewPlaceInItinerary();
-                    if (newPlace == null) {
-                        Log.i(TAG, "No more places to add");
+                if (navStarted == false) {
+                    // Retrieve detected position in list
+                    final int position = viewHolder.getAdapterPosition();
+                    if (position < 0) {
+                        Log.e(TAG, "Cannot remove position " + position + " from list");
                     } else {
-                        int newPosition = itinerary.indexOf(newPlace);
-                        if (newPosition < 0) {
-                            Log.e(TAG, "Position of just added place not found");
+                        // Remove place from list
+                        final String place = itinerary.remove(position);
+                        if (place == null) {
+                            Log.e(TAG, "Removed place is null");
                         }
-                        recyclerView.getAdapter().notifyItemInserted(newPosition);
+                        recyclerView.getAdapter().notifyItemRemoved(position);
 
-                        drawRoute();
-                    }
+                        // Put new place in list
+                        final String newPlace = putNewPlaceInItinerary();
+                        if (newPlace == null) {
+                            Log.i(TAG, "No more places to add");
+                        } else {
+                            int newPosition = itinerary.indexOf(newPlace);
+                            if (newPosition < 0) {
+                                Log.e(TAG, "Position of just added place not found");
+                            }
+                            recyclerView.getAdapter().notifyItemInserted(newPosition);
 
-                    // Allow for undo action
-                    Snackbar snackbar = Snackbar
-                            .make(recyclerView, "PLACE REMOVED", Snackbar.LENGTH_LONG)
-                            .setAction("UNDO", new View.OnClickListener() {
-                                @Override
-                                public void onClick(View view) {
-                                    // Remove new place
-                                    if (newPlace != null) {
-                                        int newPosition = itinerary.indexOf(newPlace);
-                                        if (newPosition < 0) {
-                                            Log.e(TAG, "Position of just added place not found");
-                                        } else {
-                                            itinerary.remove(newPosition);
-                                            recyclerView.getAdapter().notifyItemRemoved(newPosition);
+                            drawRoute();
+                        }
+
+                        // Allow for undo action
+                        Snackbar snackbar = Snackbar
+                                .make(recyclerView, "PLACE REMOVED", Snackbar.LENGTH_LONG)
+                                .setAction("UNDO", new View.OnClickListener() {
+                                    @Override
+                                    public void onClick(View view) {
+                                        // Remove new place
+                                        if (newPlace != null) {
+                                            int newPosition = itinerary.indexOf(newPlace);
+                                            if (newPosition < 0) {
+                                                Log.e(TAG, "Position of just added place not found");
+                                            } else {
+                                                itinerary.remove(newPosition);
+                                                recyclerView.getAdapter().notifyItemRemoved(newPosition);
+                                            }
                                         }
+
+                                        // Add old place
+                                        if (place != null) {
+                                            itinerary.add(position, place);
+                                            recyclerView.getAdapter().notifyItemInserted(position);
+                                            recyclerView.scrollToPosition(position);
+                                        }
+
+                                        drawRoute();
                                     }
+                                });
+                        snackbar.show();
 
-                                    // Add old place
-                                    if (place != null) {
-                                        itinerary.add(position, place);
-                                        recyclerView.getAdapter().notifyItemInserted(position);
-                                        recyclerView.scrollToPosition(position);
-                                    }
+                        // Scroll to position
+                        recyclerView.scrollToPosition(position);
+                    }
+                }
 
-                                    drawRoute();
-                                }
-                            });
-                    snackbar.show();
-
-                    // Scroll to position
-                    recyclerView.scrollToPosition(position);
+                if (itinerary.isEmpty()) {
+                    mBottomSheetBehavior.setHideable(true);
+                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
                 }
             }
         };
