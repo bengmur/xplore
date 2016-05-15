@@ -284,9 +284,8 @@ public class MainActivity extends FragmentActivity implements
                                 Log.e(TAG, "Position of just added place not found");
                             }
                             recyclerView.getAdapter().notifyItemInserted(newPosition);
-
-                            drawRoute();
                         }
+                        drawRoute();
 
                         // Allow for undo action
                         Snackbar snackbar = Snackbar
