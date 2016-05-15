@@ -622,7 +622,7 @@ public class MainActivity extends FragmentActivity implements
         Polyline line = mMap.addPolyline(new PolylineOptions()
                 .addAll(newLocs)
                 .width(20)
-                .zIndex(101)
+                .zIndex(1)
                 .color(Color.argb(255, 0, 191, 255)));
     }
 
@@ -762,7 +762,7 @@ public class MainActivity extends FragmentActivity implements
                         Polyline line = mMap.addPolyline(new PolylineOptions()
                                 .addAll(pointsList)
                                 .width(20)
-                                .zIndex(100)
+                                .zIndex(0)
                                 .color(Color.argb(255, 170, 170, 170)));
 
                         mapLegs.add(line);
