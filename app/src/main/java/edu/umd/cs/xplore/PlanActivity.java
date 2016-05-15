@@ -13,6 +13,7 @@ import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
+import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONObject;
 
@@ -37,11 +38,16 @@ public class PlanActivity extends AppCompatActivity {
     private PlaceAutocompleteFragment autocompleteFragment;
     private Place destination = null;
     private ProgressDialog findLocationsProgressDialog;
+    private LatLng lastLoc;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_plan);
+
+        // Get last location from MainActivity intent
+        Intent intent = getIntent();
+        lastLoc = (LatLng) intent.getExtras().get("lastLoc");
 
         // Setup number pickers
         hourField = (NumberPicker) findViewById(R.id.hour_field);
@@ -105,12 +111,13 @@ public class PlanActivity extends AppCompatActivity {
 
         // Find 4 possible destinations for the user. If the user enters something, add that
         //  on to the list of possible destinations.
-        // TODO: get user's current location
-        // TODO: also handle situation where user doesn't give permission
 
         // example using Frederick, MD
-        double currLat = 39.4143;
-        double currLong = -77.4105;
+        // double currLat = 39.4143;
+        // double currLong = -77.4105;
+
+        double currLat = lastLoc.latitude;
+        double  currLong = lastLoc.longitude;
 
         /* Using duration, limit travel to final destination and back to origin to 40%
            of duration, so 20% for each way, assuming speed of 60mph. Total duration in
