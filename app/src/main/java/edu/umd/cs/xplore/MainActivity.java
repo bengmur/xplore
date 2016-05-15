@@ -169,7 +169,7 @@ public class MainActivity extends FragmentActivity implements
 
                     FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.main_fab);
                     fab.setImageDrawable(getResources().getDrawable(
-                            R.drawable.ic_navigation_white_24dp, getTheme()));
+                            R.drawable.ic_share_white_24dp, getTheme()));
                 }
             }
         }
@@ -181,7 +181,12 @@ public class MainActivity extends FragmentActivity implements
         setContentView(R.layout.activity_main);
 
         // Get fields
-        if (savedInstanceState != null) {
+        boolean saved = false;
+        if (savedInstanceState == null) {
+            Log.i(TAG, "No saved instance state to load from");
+        } else {
+            Log.i(TAG, "Loading from saved instance state");
+            saved = true;
             selectedPreferences = savedInstanceState.getStringArrayList(SELECTED_PREFS);
             matches = (HashMap<String, ArrayList<String>>) savedInstanceState.getSerializable(MATCHES);
             matchNames = (HashMap<String, String>) savedInstanceState.getSerializable(MATCH_NAMES);
@@ -195,7 +200,6 @@ public class MainActivity extends FragmentActivity implements
             initLoc = savedInstanceState.getParcelable(INIT_LOC);
             tripActive = savedInstanceState.getBoolean(TRIP_ACTIVE);
             shareTrip = savedInstanceState.getBoolean(SHARE_TRIP);
-            pendingDrawMap = savedInstanceState.getBoolean(PENDING_DRAW_MAP);
             navStarted = savedInstanceState.getBoolean(NAV_STARTED);
             itineraryCursor = savedInstanceState.getInt(ITINERARY_CURSOR);
             itineraryBounds = savedInstanceState.getInt(ITINERARY_BOUNDS);
@@ -225,6 +229,14 @@ public class MainActivity extends FragmentActivity implements
                 }
             }
         });
+        if (tripActive) {
+            pendingDrawMap = true;
+            fab.setImageDrawable(getResources().getDrawable(
+                    R.drawable.ic_navigation_white_24dp, getTheme()));
+        } else if (shareTrip) {
+            fab.setImageDrawable(getResources().getDrawable(
+                    R.drawable.ic_share_white_24dp, getTheme()));
+        }
 
         View bottomSheet = findViewById(R.id.bottom_sheet);
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
@@ -303,7 +315,7 @@ public class MainActivity extends FragmentActivity implements
                     }
                 }
 
-                if (itinerary.isEmpty()) {
+                if (itinerary == null || itinerary.isEmpty()) {
                     mBottomSheetBehavior.setHideable(true);
                     mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
                 }
@@ -317,8 +329,9 @@ public class MainActivity extends FragmentActivity implements
         Intent intent = getIntent();
         String action = intent.getAction();
         String type = intent.getType();
-        if (Intent.ACTION_SEND.equals(action) && type != null) {
+        if (!saved && type != null && Intent.ACTION_SEND.equals(action)) {
             if ("list/preferences".equals(type)) {
+                Log.i(TAG, "Handling send preferences");
                 handleSendPreferences(intent);
 
                 tripActive = true;
@@ -330,6 +343,15 @@ public class MainActivity extends FragmentActivity implements
             }
         } else {
             //TODO Handle other intents
+        }
+
+        if (itinerary != null) {
+            // Set PeekHeight
+            mBottomSheetBehavior.setPeekHeight(peekHeight);
+
+            // Load RecycleView
+            recyclerView.setAdapter(new RecyclerViewStringListAdapter(itinerary, matchNames, matchPreferences));
+            recyclerView.setLayoutManager(new LinearLayoutManager(this));
         }
 
         // Register broadcast receiver for location updates
@@ -371,6 +393,7 @@ public class MainActivity extends FragmentActivity implements
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
 
+        Log.i(TAG, "Saving instance state");
         outState.putStringArrayList(SELECTED_PREFS, selectedPreferences);
         outState.putSerializable(MATCHES, matches);
         outState.putSerializable(MATCH_NAMES, matchNames);
@@ -473,7 +496,7 @@ public class MainActivity extends FragmentActivity implements
 
     private String putNewPlaceInItinerary() {
         // No places to add
-        if (selectedPreferences.isEmpty()) {
+        if (selectedPreferences == null || selectedPreferences.isEmpty()) {
             Log.e(TAG, "No places found for any preferences");
             preferenceIdx = 0;
             return null;
@@ -484,10 +507,10 @@ public class MainActivity extends FragmentActivity implements
         ArrayList<String> places = matches.get(currPreference);
 
         // Handle no places found for preference
-        while (places.isEmpty()) {
+        while (places == null || places.isEmpty()) {
             Log.e(TAG, "No places found for preference " + currPreference);
             selectedPreferences.remove(currPreference);
-            if (selectedPreferences.isEmpty()) {
+            if (selectedPreferences == null || selectedPreferences.isEmpty()) {
                 Log.e(TAG, "No places found for any preferences");
                 preferenceIdx = 0;
                 return null;
@@ -560,10 +583,11 @@ public class MainActivity extends FragmentActivity implements
             Log.e(TAG, "Destination not passed");
         }
         ArrayList<String> destinations = matches.remove("destination");
-        if (destinations.isEmpty()) {
+        if (destinations == null || destinations.isEmpty()) {
             Log.e(TAG, "Destination not passed");
+        } else {
+            destination = destinations.get(0);
         }
-        destination = destinations.get(0);
         Log.i(TAG, "Destination = " + destination);
 
         // Make sure match names and preferences are stored
@@ -583,13 +607,6 @@ public class MainActivity extends FragmentActivity implements
         for (String preference : matches.keySet()) {
             Log.i(TAG, preference + " -> " + convertIdsToNames(matches.get(preference)));
         }
-
-        // Set PeekHeight
-        mBottomSheetBehavior.setPeekHeight(peekHeight);
-
-        // Load RecycleView
-        recyclerView.setAdapter(new RecyclerViewStringListAdapter(itinerary, matchNames, matchPreferences));
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 
     private void drawMovingLoc() {
