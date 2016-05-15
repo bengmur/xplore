@@ -31,6 +31,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -43,6 +44,7 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Array;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -74,6 +76,10 @@ public class MainActivity extends FragmentActivity implements
     private RecyclerView recyclerView;
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
+
+    private ArrayList<Marker> mapMarkers = new ArrayList<>();
+    private ArrayList<Polyline> mapLegs = new ArrayList<>();;
+
     private boolean tripActive = false;
     private LocationTracker locService;
     private boolean pendingDrawMap = false;
@@ -174,6 +180,8 @@ public class MainActivity extends FragmentActivity implements
                             Log.e(TAG, "Position of just added place not found");
                         }
                         recyclerView.getAdapter().notifyItemInserted(newPosition);
+
+                        drawRoute();
                     }
 
                     // Allow for undo action
@@ -199,6 +207,8 @@ public class MainActivity extends FragmentActivity implements
                                         recyclerView.getAdapter().notifyItemInserted(position);
                                         recyclerView.scrollToPosition(position);
                                     }
+
+                                    drawRoute();
                                 }
                             });
                     snackbar.show();
@@ -293,7 +303,13 @@ public class MainActivity extends FragmentActivity implements
 
     // Clear old routing on any updates to itinerary
     private void clearRoute() {
-        // TODO: implement
+        for (Marker m : mapMarkers) {
+            m.remove();
+        }
+
+        for (Polyline l : mapLegs) {
+            l.remove();
+        }
     }
 
     private void drawRoute() {
@@ -307,18 +323,18 @@ public class MainActivity extends FragmentActivity implements
             return;
         }
 
+        clearRoute();
+
         // Sample addresses for testing prior to integration with actual initial places
         // These can be addresses, precise location names, etc. (anything that Google Maps can find the *correct* coordinates for)
         // TODO: use current location for start/end points
-        ArrayList<String> modItineray = new ArrayList<String>();
-        modItineray.add("Chipotle Mexican Grill, New Hampshire Ave, Silver Spring, MD");
+        ArrayList<String> modItinerary = new ArrayList<String>(itinerary);
         LatLng currLoc = locService.getCurrentLocation();
         String currLocStr = currLoc.latitude + ", " + currLoc.longitude;
-        modItineray.add(0, currLocStr);
-        modItineray.add(currLocStr);
+        modItinerary.add(0, currLocStr);
 
-        String[] modItineraryArray = new String[modItineray.size()];
-        modItineray.toArray(modItineraryArray);
+        String[] modItineraryArray = new String[modItinerary.size()];
+        modItinerary.toArray(modItineraryArray);
 
         // Draw polyline connecting places (up to 23 places allowed by the API for the single request)
         DirectionsAsyncTask routePolylineDrawer = new DirectionsAsyncTask();
@@ -461,11 +477,15 @@ public class MainActivity extends FragmentActivity implements
                 // ignore initial origin, which is also final destination, so start iterating at i = 1
                 // ignore final waypoint to omit final separating "|" character, so end at prior to last element
                 for (int i = 1; i < params.length - 1; i++) {
-                    urlStringBuilder.append(URLEncoder.encode(params[i] + "|", "UTF-8"));
+                    urlStringBuilder.append(URLEncoder.encode("place_id:" + params[i] + "|", "UTF-8"));
                 }
-                urlStringBuilder.append(URLEncoder.encode(params[params.length - 1], "UTF-8"));
+                urlStringBuilder.append(URLEncoder.encode("place_id:" + params[params.length - 1], "UTF-8"));
+                urlStringBuilder.append("&key=AIzaSyAOzEWOLOBTMvslQTtB4zBQOWwe2t88mAI");
 
                 URL reqURL = new URL(urlStringBuilder.toString());
+
+                Log.i("URL", urlStringBuilder.toString());
+
                 HttpsURLConnection urlConnection = (HttpsURLConnection) reqURL.openConnection();
                 InputStream in = new BufferedInputStream(urlConnection.getInputStream());
                 String queryResponse = readStream(in);
@@ -493,8 +513,9 @@ public class MainActivity extends FragmentActivity implements
                     // Add a marker on start location of current leg
                     JSONObject startLocJSON = currLeg.getJSONObject("start_location");
                     LatLng startLocLatLng = new LatLng(startLocJSON.getDouble("lat"), startLocJSON.getDouble("lng"));
-                    //TODO: Change marker name to actual location name, add icon property too maybe?
-                    mMap.addMarker(new MarkerOptions().position(startLocLatLng).title("Chipotle").snippet(currLeg.getString("start_address")));
+
+                    Marker m = mMap.addMarker(new MarkerOptions().position(startLocLatLng).title(currLeg.getString("start_address")));
+                    mapMarkers.add(m);
 
                     // Draw PolyLine for each step in the leg
                     // TODO: Store PolyLines so color can be modified as user progresses along journey
@@ -507,6 +528,8 @@ public class MainActivity extends FragmentActivity implements
                                 .addAll(pointsList)
                                 .width(20)
                                 .color(Color.argb(255, 170, 170, 170)));
+
+                        mapLegs.add(line);
                     }
                 }
 
@@ -516,7 +539,7 @@ public class MainActivity extends FragmentActivity implements
                         routeBounds.getJSONObject("southwest").getDouble("lng"));
                 LatLng northeastBound = new LatLng(routeBounds.getJSONObject("northeast").getDouble("lat"),
                         routeBounds.getJSONObject("northeast").getDouble("lng"));
-                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(new LatLngBounds(southwestBound, northeastBound), 50));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(new LatLngBounds(southwestBound, northeastBound), 400));
             } catch (Exception e) {
                 // TODO: handle errors
             }
