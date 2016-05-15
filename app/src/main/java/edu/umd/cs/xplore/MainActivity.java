@@ -70,6 +70,7 @@ public class MainActivity extends FragmentActivity implements
     private HashMap<String, String> matchPreferences;
     private int duration;
     private ArrayList<String> itinerary;
+    private ArrayList<String> itineraryAddresses; // populated by drawRoute()
     private int preferenceIdx;
     private String destination;
 
@@ -87,6 +88,8 @@ public class MainActivity extends FragmentActivity implements
     private LocationTracker locService;
     private boolean pendingDrawMap = false;
     private boolean pendingLocService = false;
+
+    private int itineraryCursor;
 
     private ServiceConnection locTrackerConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -138,9 +141,13 @@ public class MainActivity extends FragmentActivity implements
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, PlanActivity.class);
-                intent.putExtra(LAST_LOC, locService.getCurrentLocation());
-                startActivity(intent);
+                if (!tripActive) {
+                    Intent intent = new Intent(MainActivity.this, PlanActivity.class);
+                    intent.putExtra(LAST_LOC, locService.getCurrentLocation());
+                    startActivity(intent);
+                } else {
+                    navigateToAddress(itineraryAddresses.get(itineraryCursor));
+                }
             }
         });
 
@@ -231,6 +238,11 @@ public class MainActivity extends FragmentActivity implements
         if (Intent.ACTION_SEND.equals(action) && type != null) {
             if ("list/preferences".equals(type)) {
                 handleSendPreferences(intent);
+
+                tripActive = true;
+                itineraryCursor = 0;
+                fab.setImageDrawable(getResources().getDrawable(
+                        R.drawable.ic_navigation_white_24dp, getTheme()));
             } else {
                 //TODO Handle other intents
             }
@@ -514,15 +526,17 @@ public class MainActivity extends FragmentActivity implements
                 // using first route by default, since Google's navigation intents don't allow specifying waypoints
                 JSONArray routeLegs = directionsResult.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
 
+                itineraryAddresses = new ArrayList<>();
                 for (int i = 0; i < routeLegs.length(); i++) {
                     JSONObject currLeg = routeLegs.getJSONObject(i);
 
-                    // Add a marker on start location of current leg
+                    // Add a marker on end location of current leg
                     JSONObject startLocJSON = currLeg.getJSONObject("start_location");
                     LatLng startLocLatLng = new LatLng(startLocJSON.getDouble("lat"), startLocJSON.getDouble("lng"));
 
-                    Marker m = mMap.addMarker(new MarkerOptions().position(startLocLatLng).title(currLeg.getString("start_address")));
+                    Marker m = mMap.addMarker(new MarkerOptions().position(startLocLatLng).title(currLeg.getString("end_address")));
                     mapMarkers.add(m);
+                    itineraryAddresses.add(currLeg.getString("end_address"));
 
                     // Draw PolyLine for each step in the leg
                     // TODO: Store PolyLines so color can be modified as user progresses along journey
