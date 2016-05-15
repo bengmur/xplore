@@ -86,8 +86,6 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         super.onCreate(savedInstanceState);
 
         // Set values
-        prefAdapter = new PreferencesAdapter(this.getApplicationContext());
-        
         if (savedInstanceState == null) {
             selectedPreferences = new HashSet<String>();
             positionsIDs = new HashSet<Integer>();
@@ -97,11 +95,6 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
             selectedPreferences = (HashSet<String>) savedInstanceState.getSerializable("selectedPreferences");
             positionsIDs = (HashSet<Integer>) savedInstanceState.getSerializable("positionsIDs");
             duration = savedInstanceState.getInt("duration");
-
-            for (Integer i : positionsIDs) {
-                View prefItemView = (View) prefAdapter.getItem(i);
-                prefItemView.setBackgroundResource(R.color.colorAccent);
-            }
         }
 
         setContentView(R.layout.preferences_layout);
@@ -182,6 +175,13 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                     }
                 }
             });
+        }
+
+        if (savedInstanceState != null) {
+            for (Integer i : positionsIDs) {
+                View prefItemView = (View) prefAdapter.getItem(i);
+                prefItemView.setBackgroundResource(R.color.colorAccent);
+            }
         }
 
         // Connected to Google Places API
