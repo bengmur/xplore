@@ -541,8 +541,8 @@ public class MainActivity extends FragmentActivity implements
     }
 
     private void createItinerary() {
-        double tripDuration = Math.ceil(0.6 * duration);
-        int numPlaces = (int) Math.ceil(tripDuration / 120.0);
+        double tripDuration = 0.6 * duration;
+        int numPlaces = (int) (tripDuration / 120.0);
         Log.i(TAG, "Num places = " + Integer.toString(numPlaces + 1));
         Log.i(TAG, "Number of preferences = " + selectedPreferences.size());
         for (int i = 0; i < numPlaces + 1; i++) {
