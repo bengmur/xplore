@@ -30,6 +30,9 @@ public class LocationTracker extends Service implements LocationListener {
     IBinder locBinder = new LocationTrackerBinder();
     boolean allowRebind = true;
 
+    boolean placeProximityActive = false;
+    LatLng placeProximityLatLng;
+
     public class LocationTrackerBinder extends Binder {
         LocationTracker getService() {
             // Return this instance of LocalService so clients can call public methods
@@ -73,6 +76,7 @@ public class LocationTracker extends Service implements LocationListener {
     @Override
     public boolean onUnbind(Intent intent) {
         activityDestroyed = true;
+        resendAllLocs = true;
         Log.i(TAG, "Location updates inactive..");
         return allowRebind;
     }
@@ -118,21 +122,23 @@ public class LocationTracker extends Service implements LocationListener {
         locationUpdates.add(new LatLng(loc.getLatitude(), loc.getLongitude()));
         allLocs.add(new LatLng(loc.getLatitude(), loc.getLongitude()));
 
-        if (activityDestroyed) {
-            Log.d(TAG, "Resending all locations..");
-            Intent locBrdIntent = new Intent("edu.umd.cs.xplore.LOC_UPDATE");
-            locBrdIntent.putExtra("locs", allLocs);
-            sendBroadcast(locBrdIntent);
+        if (!activityDestroyed) {
+            if (resendAllLocs) {
+                Log.d(TAG, "Resending all locations..");
+                Intent locBrdIntent = new Intent("edu.umd.cs.xplore.LOC_UPDATE");
+                locBrdIntent.putExtra("locs", allLocs);
+                sendBroadcast(locBrdIntent);
 
-            locationUpdates.clear(); // clear updates since they're included in the "allLocs" list
-            resendAllLocs = false;
-        } else {
-            Log.d(TAG, "Sending location updates..");
-            Intent locBrdIntent = new Intent("edu.umd.cs.xplore.LOC_UPDATE");
-            locBrdIntent.putExtra("locs", locationUpdates);
-            sendBroadcast(locBrdIntent);
+                locationUpdates.clear(); // clear updates since they're included in the "allLocs" list
+                resendAllLocs = false;
+            } else {
+                Log.d(TAG, "Sending location updates..");
+                Intent locBrdIntent = new Intent("edu.umd.cs.xplore.LOC_UPDATE");
+                locBrdIntent.putExtra("locs", locationUpdates);
+                sendBroadcast(locBrdIntent);
 
-            locationUpdates.clear();
+                locationUpdates.clear();
+            }
         }
     }
     public void onProviderEnabled(String s){
@@ -145,6 +151,15 @@ public class LocationTracker extends Service implements LocationListener {
     public LatLng getCurrentLocation() {
         try {
             Location lastLoc = locManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+            if (lastLoc == null) {
+                lastLoc = locManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            }
+
+            if (lastLoc == null) {
+                lastLoc = locManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+            }
+
             return new LatLng(lastLoc.getLatitude(), lastLoc.getLongitude());
         } catch (SecurityException ex) {
             // TODO: req permission
@@ -165,4 +180,5 @@ public class LocationTracker extends Service implements LocationListener {
             // TODO: req permission
         }
     }
+
 }

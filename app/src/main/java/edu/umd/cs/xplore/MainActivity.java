@@ -10,6 +10,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -29,6 +30,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
@@ -76,6 +78,7 @@ public class MainActivity extends FragmentActivity implements
     private RecyclerView recyclerView;
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
+    LatLng initLoc;
 
     private ArrayList<Marker> mapMarkers = new ArrayList<>();
     private ArrayList<Polyline> mapLegs = new ArrayList<>();;
@@ -136,8 +139,7 @@ public class MainActivity extends FragmentActivity implements
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(MainActivity.this, PlanActivity.class);
-                // TODO: change this from hardcoded to actual last location
-                intent.putExtra(LAST_LOC, new LatLng(38.988205, -76.943566));
+                intent.putExtra(LAST_LOC, locService.getCurrentLocation());
                 startActivity(intent);
             }
         });
@@ -295,6 +297,12 @@ public class MainActivity extends FragmentActivity implements
         // coordinates of current location to the device under "Location Controls".
         enableMyLocation();
 
+        CameraPosition initPos = new CameraPosition.Builder()
+                .target(new LatLng(38.904679, -77.036021))
+                .zoom(10)
+                .build();
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(initPos));
+
         if (pendingDrawMap) {
             pendingDrawMap = false;
             drawRoute();
@@ -325,13 +333,12 @@ public class MainActivity extends FragmentActivity implements
 
         clearRoute();
 
-        // Sample addresses for testing prior to integration with actual initial places
-        // These can be addresses, precise location names, etc. (anything that Google Maps can find the *correct* coordinates for)
-        // TODO: use current location for start/end points
         ArrayList<String> modItinerary = new ArrayList<String>(itinerary);
-        LatLng currLoc = locService.getCurrentLocation();
-        String currLocStr = currLoc.latitude + ", " + currLoc.longitude;
-        modItinerary.add(0, currLocStr);
+        if (initLoc == null) {
+            initLoc = locService.getCurrentLocation();
+        }
+        String initLocStr = initLoc.latitude + ", " + initLoc.longitude;
+        modItinerary.add(0, initLocStr);
 
         String[] modItineraryArray = new String[modItinerary.size()];
         modItinerary.toArray(modItineraryArray);
@@ -551,6 +558,13 @@ public class MainActivity extends FragmentActivity implements
                 .addAll(newLocs)
                 .width(20)
                 .color(Color.argb(255, 0, 191, 255)));
+    }
+
+    private void navigateToAddress(String address) {
+        Uri navIntentURI = Uri.parse("google.navigation:q=" + address);
+        Intent navIntent = new Intent(Intent.ACTION_VIEW, navIntentURI);
+        navIntent.setPackage("com.google.android.apps.maps");
+        startActivity(navIntent);
     }
 
     private String readStream(InputStream is) {
