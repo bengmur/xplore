@@ -71,20 +71,6 @@ public class PlanActivity extends AppCompatActivity {
         hourField.setFormatter(formatter);
         minuteField.setFormatter(formatter);
 
-        // Set values
-        if (savedInstanceState == null) {
-            hourField.setValue(6);
-            minuteField.setValue(30);
-            destination = null;
-        } else {
-            hourField.setValue(savedInstanceState.getInt(HOUR_FIELD, 6));
-            minuteField.setValue(savedInstanceState.getInt(MINUTE_FIELD, 30));
-            destination = savedInstanceState.getString(DESTINATION, null);
-            if (destination != null) {
-                autocompleteFragment.setText(destination);
-            }
-        }
-
         // Setup autocomplete fragment
         autocompleteFragment = (PlaceAutocompleteFragment)
                 getFragmentManager().findFragmentById(R.id.place_autocomplete_fragment);
@@ -103,6 +89,20 @@ public class PlanActivity extends AppCompatActivity {
         // autocompleteFragment.setBoundsBias(new LatLngBounds(
         //         new LatLng(-33.880490, 151.184363),
         //         new LatLng(-33.858754, 151.229596)));
+
+        // Set values
+        if (savedInstanceState == null) {
+            hourField.setValue(6);
+            minuteField.setValue(30);
+            destination = null;
+        } else {
+            hourField.setValue(savedInstanceState.getInt(HOUR_FIELD, 6));
+            minuteField.setValue(savedInstanceState.getInt(MINUTE_FIELD, 30));
+            destination = savedInstanceState.getString(DESTINATION, null);
+            if (destination != null) {
+                autocompleteFragment.setText(destination);
+            }
+        }
 
         findLocationsProgressDialog = new ProgressDialog(this);
         findLocationsProgressDialog.setTitle("Finding Locations");

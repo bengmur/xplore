@@ -59,6 +59,26 @@ public class MainActivity extends FragmentActivity implements
         OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
 
+    // TODO: GoogleMap?
+    // TODO: BottomSheetBehavior
+    // TODO: Peek Height?
+    public static final String SELECTED_PREFS = "edu.umd.cs.xplore.SELECTED_PREFS";
+    public static final String MATCHES = "edu.umd.cs.xplore.MATCHES";
+    public static final String MATCH_NAMES = "edu.umd.cs.xplore.MATCH_NAMES";
+    public static final String MATCH_PREFS = "edu.umd.cs.xplore.MATCH_PREFS";
+    public static final String DURATION = "edu.umd.cs.xplore.DURATION";
+    public static final String ITINERARY = "edu.umd.cs.xplore.ITINERARY";
+    public static final String ITINERARY_ADDRESSES = "edu.umd.cs.xplore.ITINERARY_ADDRESSES";
+    public static final String ITINERARY_LATLNGS = "edu.umd.cs.xplore.ITINERARY_LATLNGS";
+    public static final String PREF_IDX = "edu.umd.cs.xplore.PREF_IDX";
+    public static final String DESTINATION = "edu.umd.cs.xplore.DESTINATION";
+    public static final String INIT_LOC = "edu.umd.cs.xplore.INIT_LOC";
+    public static final String TRIP_ACTIVE = "edu.umd.cs.xplore.TRIP_ACTIVE";
+    public static final String SHARE_TRIP = "edu.umd.cs.xplore.SHARE_TRIP";
+    public static final String PENDING_DRAW_MAP = "edu.umd.cs.xplore.PENDING_DRAW_MAP";
+    public static final String NAV_STARTED = "edu.umd.cs.xplore.NAV_STARTED";
+    public static final String ITINERARY_CURSOR = "edu.umd.cs.xplore.ITINERARY_CURSOR";
+    public static final String ITINERARY_BOUNDS = "edu.umd.cs.xplore.ITINERARY_BOUNDS";
     public static final String LAST_LOC = "edu.umd.cs.xplore.LAST_LOC";
 
     private static final String TAG = "MainActivity";
@@ -80,10 +100,10 @@ public class MainActivity extends FragmentActivity implements
     private RecyclerView recyclerView;
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
-    LatLng initLoc;
+    private LatLng initLoc;
 
-    private ArrayList<Marker> mapMarkers = new ArrayList<>();
-    private ArrayList<Polyline> mapLegs = new ArrayList<>();;
+    private ArrayList<Marker> mapMarkers = new ArrayList<Marker>();
+    private ArrayList<Polyline> mapLegs = new ArrayList<Polyline>();
 
     private boolean tripActive = false;
     private boolean shareTrip = false;
@@ -97,7 +117,7 @@ public class MainActivity extends FragmentActivity implements
 
     private ServiceConnection locTrackerConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
-            locService = ((LocationTracker.LocationTrackerBinder)service).getService();
+            locService = ((LocationTracker.LocationTrackerBinder) service).getService();
 
             if (pendingLocService) {
                 pendingLocService = false;
@@ -159,6 +179,28 @@ public class MainActivity extends FragmentActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Get fields
+        if (savedInstanceState != null) {
+            selectedPreferences = savedInstanceState.getStringArrayList(SELECTED_PREFS);
+            matches = (HashMap<String, ArrayList<String>>) savedInstanceState.getSerializable(MATCHES);
+            matchNames = (HashMap<String, String>) savedInstanceState.getSerializable(MATCH_NAMES);
+            matchPreferences = (HashMap<String, String>) savedInstanceState.getSerializable(MATCH_PREFS);
+            duration = savedInstanceState.getInt(DURATION);
+            itinerary = savedInstanceState.getStringArrayList(ITINERARY);
+            itineraryAddresses = savedInstanceState.getStringArrayList(ITINERARY_ADDRESSES);
+            itineraryLatLngs = savedInstanceState.getParcelableArrayList(ITINERARY_LATLNGS);
+            preferenceIdx = savedInstanceState.getInt(PREF_IDX);
+            destination = savedInstanceState.getString(DESTINATION);
+            initLoc = savedInstanceState.getParcelable(INIT_LOC);
+            tripActive = savedInstanceState.getBoolean(TRIP_ACTIVE);
+            shareTrip = savedInstanceState.getBoolean(SHARE_TRIP);
+            pendingDrawMap = savedInstanceState.getBoolean(PENDING_DRAW_MAP);
+            navStarted = savedInstanceState.getBoolean(NAV_STARTED);
+            itineraryCursor = savedInstanceState.getInt(ITINERARY_CURSOR);
+            itineraryBounds = savedInstanceState.getInt(ITINERARY_BOUNDS);
+        }
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -200,7 +242,7 @@ public class MainActivity extends FragmentActivity implements
 
             @Override
             public void onSwiped(final RecyclerView.ViewHolder viewHolder, int swipeDir) {
-                if (navStarted == false) {
+                if (!navStarted) {
                     // Retrieve detected position in list
                     final int position = viewHolder.getAdapterPosition();
                     if (position < 0) {
@@ -323,6 +365,29 @@ public class MainActivity extends FragmentActivity implements
     @Override
     protected void onStop() {
         super.onStop();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putStringArrayList(SELECTED_PREFS, selectedPreferences);
+        outState.putSerializable(MATCHES, matches);
+        outState.putSerializable(MATCH_NAMES, matchNames);
+        outState.putSerializable(MATCH_PREFS, matchPreferences);
+        outState.putInt(DURATION, duration);
+        outState.putStringArrayList(ITINERARY, itinerary);
+        outState.putStringArrayList(ITINERARY_ADDRESSES, itineraryAddresses);
+        outState.putParcelableArrayList(ITINERARY_LATLNGS, itineraryLatLngs);
+        outState.putInt(PREF_IDX, preferenceIdx);
+        outState.putString(DESTINATION, destination);
+        outState.putParcelable(INIT_LOC, initLoc);
+        outState.putBoolean(TRIP_ACTIVE, tripActive);
+        outState.putBoolean(SHARE_TRIP, shareTrip);
+        outState.putBoolean(PENDING_DRAW_MAP, pendingDrawMap);
+        outState.putBoolean(NAV_STARTED, navStarted);
+        outState.putInt(ITINERARY_CURSOR, itineraryCursor);
+        outState.putInt(ITINERARY_BOUNDS, itineraryBounds);
     }
 
     @Override
@@ -527,6 +592,77 @@ public class MainActivity extends FragmentActivity implements
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 
+    private void drawMovingLoc() {
+        Polyline line = mMap.addPolyline(new PolylineOptions()
+                .addAll(newLocs)
+                .width(20)
+                .color(Color.argb(255, 0, 191, 255)));
+    }
+
+    private void navigateToAddress(String address) {
+        Uri navIntentURI = Uri.parse("google.navigation:q=" + address);
+        Intent navIntent = new Intent(Intent.ACTION_VIEW, navIntentURI);
+        navIntent.setPackage("com.google.android.apps.maps");
+        startActivity(navIntent);
+    }
+
+    private String readStream(InputStream is) {
+        try {
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            int i = is.read();
+            while (i != -1) {
+                bo.write(i);
+                i = is.read();
+            }
+            return bo.toString();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    private void enableMyLocation() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+        } else {
+            mMap.setMyLocationEnabled(true);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case 0: { // ACCESS_FINE_LOCATION case
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    enableMyLocation();
+                } else {
+                    // permission denied: quit app (location is vital to usage..)
+                    // TODO: handle this more cleanly instead of just exiting out
+                    finish();
+                }
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request
+        }
+    }
+
+    // Source: http://stackoverflow.com/questions/600207/how-to-check-if-a-service-is-running-on-android
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
 
         @Override
@@ -614,76 +750,5 @@ public class MainActivity extends FragmentActivity implements
                 // TODO: handle errors
             }
         }
-    }
-
-    private void drawMovingLoc() {
-        Polyline line = mMap.addPolyline(new PolylineOptions()
-                .addAll(newLocs)
-                .width(20)
-                .color(Color.argb(255, 0, 191, 255)));
-    }
-
-    private void navigateToAddress(String address) {
-        Uri navIntentURI = Uri.parse("google.navigation:q=" + address);
-        Intent navIntent = new Intent(Intent.ACTION_VIEW, navIntentURI);
-        navIntent.setPackage("com.google.android.apps.maps");
-        startActivity(navIntent);
-    }
-
-    private String readStream(InputStream is) {
-        try {
-            ByteArrayOutputStream bo = new ByteArrayOutputStream();
-            int i = is.read();
-            while (i != -1) {
-                bo.write(i);
-                i = is.read();
-            }
-            return bo.toString();
-        } catch (IOException e) {
-            return "";
-        }
-    }
-
-    private void enableMyLocation() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
-        } else {
-            mMap.setMyLocationEnabled(true);
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case 0: { // ACCESS_FINE_LOCATION case
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                    enableMyLocation();
-                } else {
-                    // permission denied: quit app (location is vital to usage..)
-                    // TODO: handle this more cleanly instead of just exiting out
-                    finish();
-                }
-                return;
-            }
-
-            // other 'case' lines to check for other
-            // permissions this app might request
-        }
-    }
-
-    // Source: http://stackoverflow.com/questions/600207/how-to-check-if-a-service-is-running-on-android
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
     }
 }
