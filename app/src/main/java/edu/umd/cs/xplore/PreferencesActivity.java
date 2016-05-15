@@ -67,12 +67,36 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
     private ArrayList<String> destinationList;
     private PreferenceList prefList = PreferenceList.getInstance();
     private HashSet<String> selectedPreferences = new HashSet<String>();
+    private HashSet<Integer> positionsIDs = new HashSet<Integer>();
     private int duration;
     private GoogleApiClient mGoogleApiClient; // Connect to Google Places API
     private ProgressDialog findPlacesProgressDialog;
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("curDestination", curDestination);
+        outState.putStringArrayList("destinationList", destinationList);
+        outState.putSerializable("positionsIDs", positionsIDs);
+        outState.putSerializable("selectedPreferences", selectedPreferences);
+        outState.putInt("duration", duration);
+    }
+
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Set values
+        if (savedInstanceState == null) {
+            selectedPreferences = new HashSet<String>();
+            positionsIDs = new HashSet<Integer>();
+        } else {
+            curDestination = savedInstanceState.getString("curDestination");
+            destinationList = savedInstanceState.getStringArrayList("destinationList");
+            selectedPreferences = (HashSet<String>) savedInstanceState.getSerializable("selectedPreferences");
+            positionsIDs = (HashSet<Integer>) savedInstanceState.getSerializable("positionsIDs");
+            duration = savedInstanceState.getInt("duration");
+        }
+
         setContentView(R.layout.preferences_layout);
 
         // Check for an Intent from PlanActivity
@@ -128,7 +152,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         }
 
         // set up the grid list of preferences
-        prefAdapter = new PreferencesAdapter(this.getApplicationContext());
+        prefAdapter = new PreferencesAdapter(this.getApplicationContext(), positionsIDs);
         GridView prefGridView = (GridView) findViewById(R.id.preferences_grid);
         if (prefGridView == null) {
             Log.e(TAG, "Preference grid view is null");
@@ -144,9 +168,11 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                     if (selectedPreferences.contains(curPreferenceTag)) {
                         selectedPreferences.remove(curPreferenceTag);
                         view.setBackgroundColor(Color.WHITE);
+                        positionsIDs.remove(position);
                     } else {
                         selectedPreferences.add(curPreferenceTag);
                         view.setBackgroundResource(R.color.colorAccent);
+                        positionsIDs.add(position);
                     }
                 }
             });
@@ -339,6 +365,11 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                 Uri.parse("android-app://edu.umd.cs.xplore/http/host/path")
         );
         AppIndex.AppIndexApi.start(mGoogleApiClient, viewAction);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+
     }
 
     @Override

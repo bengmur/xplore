@@ -3,6 +3,7 @@
 
     <!-- Main Activity -->
     <string name="title_activity_main">Xplore</string>
+    <string name="share_chooser_title">Share trip completion to...</string>
 
     <!-- Plan Trip Activity -->
     <string name="title_activity_plan">Plan Your Trip</string>

@@ -221,7 +221,14 @@ public class MainActivity extends FragmentActivity implements
                     mBottomSheetBehavior.setHideable(true);
                     mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
                 } else if (shareTrip) {
-                    //TODO: Sharing intent goes here
+                    String toShare = "I just travelled to " + matchNames.get(destination) +
+                            " using the Xplore App!";
+                    Intent shareIntent = new Intent();
+                    shareIntent.setAction(Intent.ACTION_SEND);
+                    shareIntent.putExtra(Intent.EXTRA_TEXT, toShare);
+                    shareIntent.setType("text/plain");
+                    startActivity(Intent.createChooser(shareIntent,
+                            getResources().getText(R.string.share_chooser_title)));
                 } else {
                     Intent intent = new Intent(MainActivity.this, PlanActivity.class);
                     intent.putExtra(LAST_LOC, locService.getCurrentLocation());
@@ -731,14 +738,16 @@ public class MainActivity extends FragmentActivity implements
                     JSONObject currLeg = routeLegs.getJSONObject(i);
 
                     // Add a marker on end location of current leg
-                    JSONObject startLocJSON = currLeg.getJSONObject("start_location");
-                    LatLng startLocLatLng = new LatLng(startLocJSON.getDouble("lat"), startLocJSON.getDouble("lng"));
+                    JSONObject endLocJSON = currLeg.getJSONObject("end_location");
+                    LatLng endLocLatLng = new LatLng(endLocJSON.getDouble("lat"), endLocJSON.getDouble("lng"));
 
-                    Marker m = mMap.addMarker(new MarkerOptions().position(startLocLatLng).title(currLeg.getString("end_address")));
-                    mapMarkers.add(m);
+                    if (i < routeLegs.length() - 1) {
+                        Marker m = mMap.addMarker(new MarkerOptions().position(endLocLatLng).title(currLeg.getString("end_address")));
+                        mapMarkers.add(m);
+                    }
+
                     itineraryAddresses.add(currLeg.getString("end_address"));
-                    JSONObject currLatLng = currLeg.getJSONObject("end_location");
-                    itineraryLatLngs.add(new LatLng(currLatLng.getDouble("lat"), currLatLng.getDouble("lng")));
+                    itineraryLatLngs.add(endLocLatLng);
 
                     // Draw PolyLine for each step in the leg
                     // TODO: Store PolyLines so color can be modified as user progresses along journey
