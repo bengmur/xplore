@@ -57,6 +57,8 @@ public class MainActivity extends FragmentActivity implements
     private GoogleMap mMap;
     private ArrayList<String> selectedPreferences;
     private HashMap<String, ArrayList<String>> matches;
+    private HashMap<String, String> matchNames;
+    private HashMap<String, String> matchPreferences;
     private int duration;
     private ArrayList<String> itinerary;
     private int preferenceIdx;
@@ -122,30 +124,60 @@ public class MainActivity extends FragmentActivity implements
 
             @Override
             public void onSwiped(final RecyclerView.ViewHolder viewHolder, int swipeDir) {
+                // Retrieve detected position in list
                 final int position = viewHolder.getAdapterPosition();
-                final String place = itinerary.get(position);
-                final String newPlace = putNewPlaceInItinerary();
-                int newPlacePos = itinerary.indexOf(newPlace);
-                recyclerView.getAdapter().notifyItemInserted(newPlacePos);
-                Snackbar snackbar = Snackbar
-                        .make(recyclerView, "PLACE REMOVED", Snackbar.LENGTH_LONG)
-                        .setAction("UNDO", new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                if (position > -1) {
-                                    itinerary.add(position, place);
-                                    recyclerView.getAdapter().notifyItemInserted(position);
-                                    int newPos = itinerary.indexOf(newPlace);
-                                    itinerary.remove(newPos);
-                                    recyclerView.getAdapter().notifyItemRemoved(newPos);
-                                    recyclerView.scrollToPosition(newPos);
+                if (position < 0) {
+                    Log.e(TAG, "Cannot remove position " + position + " from list");
+                } else {
+                    // Remove place from list
+                    final String place = itinerary.remove(position);
+                    if (place == null) {
+                        Log.e(TAG, "Removed place is null");
+                    }
+                    recyclerView.getAdapter().notifyItemRemoved(position);
+
+                    // Put new place in list
+                    final String newPlace = putNewPlaceInItinerary();
+                    if (newPlace == null) {
+                        Log.i(TAG, "No more places to add");
+                    } else {
+                        int newPosition = itinerary.indexOf(newPlace);
+                        if (newPosition < 0) {
+                            Log.e(TAG, "Position of just added place not found");
+                        }
+                        recyclerView.getAdapter().notifyItemInserted(newPosition);
+                    }
+
+                    // Allow for undo action
+                    Snackbar snackbar = Snackbar
+                            .make(recyclerView, "PLACE REMOVED", Snackbar.LENGTH_LONG)
+                            .setAction("UNDO", new View.OnClickListener() {
+                                @Override
+                                public void onClick(View view) {
+                                    // Remove new place
+                                    if (newPlace != null) {
+                                        int newPosition = itinerary.indexOf(newPlace);
+                                        if (newPosition < 0) {
+                                            Log.e(TAG, "Position of just added place not found");
+                                        } else {
+                                            itinerary.remove(newPosition);
+                                            recyclerView.getAdapter().notifyItemRemoved(newPosition);
+                                        }
+                                    }
+
+                                    // Add old place
+                                    if (place != null) {
+                                        itinerary.add(position, place);
+                                        recyclerView.getAdapter().notifyItemInserted(position);
+                                        recyclerView.scrollToPosition(position);
+                                    }
                                 }
-                            }
-                        });
-                snackbar.show();
-                itinerary.remove(position);
-                recyclerView.getAdapter().notifyItemRemoved(position);
-                recyclerView.scrollToPosition(position);
+                            });
+                    snackbar.show();
+
+                    // Scroll to position
+                    recyclerView.scrollToPosition(position);
+                }
             }
         };
 
@@ -256,7 +288,7 @@ public class MainActivity extends FragmentActivity implements
 
     }
 
-    private String putNewPlaceInItinerary(){
+    private String putNewPlaceInItinerary() {
         // No places to add
         if (selectedPreferences.isEmpty()) {
             Log.e(TAG, "No places found for any preferences");
@@ -303,44 +335,58 @@ public class MainActivity extends FragmentActivity implements
         Log.i(TAG, "Number of preferences = " + selectedPreferences.size());
         for (int i = 0; i < numPlaces; i++) {
             String place = putNewPlaceInItinerary();
-            Log.i(TAG, "Found place = " + place);
+            Log.i(TAG, "Found place = " + convertIdToName(place));
         }
-        Log.i(TAG, "Itinerary = " + itinerary.toString());
+        Log.i(TAG, "Itinerary = " + convertIdsToNames(itinerary));
+    }
+
+    private String convertIdToName(String id) {
+        if (matchNames.containsKey(id)) {
+            return matchNames.get(id);
+        }
+        Log.e(TAG, "Could not find place ID: " + id);
+        return null;
+    }
+
+    private ArrayList<String> convertIdsToNames(ArrayList<String> ids) {
+        ArrayList<String> names = new ArrayList<String>(ids.size());
+        for (String id : ids) {
+            names.add(convertIdToName(id));
+        }
+        return names;
     }
 
     // Store HashSet containing preferences sent from PreferencesActivity
     private void handleSendPreferences(Intent intent) {
         // Retrieve data passed through intent
         selectedPreferences = intent.getStringArrayListExtra(PreferencesActivity.SELECTED_PREFERENCES);
-        matches = (HashMap<String, ArrayList<String>>) intent.getSerializableExtra(PreferencesActivity.ITINERARY);
+        matches = (HashMap<String, ArrayList<String>>) intent.getSerializableExtra(PreferencesActivity.MATCHES);
+        matchNames = (HashMap<String, String>) intent.getSerializableExtra(PreferencesActivity.MATCH_NAMES);
+        matchPreferences = (HashMap<String, String>) intent.getSerializableExtra(PreferencesActivity.MATCH_PREFERENCES);
         duration = intent.getIntExtra(PlanActivity.DURATION, 400);
-
-        // Get destination
-        if (matches == null || !matches.containsKey("destination")) {
-            Log.e(TAG, "Destination not passed");
-            throw new IllegalArgumentException("Destination not passed"); // TODO: Handle differently?
-        }
-        ArrayList<String> destinations = matches.remove("destination");
-        if (destinations.isEmpty()) {
-            Log.e(TAG, "Destination not passed");
-            throw new IllegalArgumentException("Destination not passed"); // TODO: Handle differently?
-        }
-        destination = destinations.get(0);
-        Log.i(TAG, "Destination = " + destination);
 
         // Make sure preferences were selected
         if (selectedPreferences == null || selectedPreferences.isEmpty()) {
             selectedPreferences = new ArrayList<String>(matches.keySet());
         }
 
-        // Save matches
-        HashMap<String, ArrayList<String>> initialMatches = new HashMap<String, ArrayList<String>>();
-        for(String key:matches.keySet()){
-            ArrayList<String> tPlaces = new ArrayList<String>();
-            for(String tPlace:matches.get(key)){
-                tPlaces.add(tPlace);
-            }
-            initialMatches.put(key, tPlaces);
+        // Get destination ID
+        if (matches == null || !matches.containsKey("destination")) {
+            Log.e(TAG, "Destination not passed");
+        }
+        ArrayList<String> destinations = matches.remove("destination");
+        if (destinations.isEmpty()) {
+            Log.e(TAG, "Destination not passed");
+        }
+        destination = destinations.get(0);
+        Log.i(TAG, "Destination = " + destination);
+
+        // Make sure match names and preferences are stored
+        if (matchNames == null) {
+            Log.e(TAG, "Match names not passed");
+        }
+        if (matchPreferences == null) {
+            Log.e(TAG, "Match preferences not passed");
         }
 
         // Fill itinerary
@@ -350,15 +396,79 @@ public class MainActivity extends FragmentActivity implements
 
         // Log preferences for debugging
         for (String preference : matches.keySet()) {
-            Log.i(TAG, preference + " -> " + matches.get(preference));
+            Log.i(TAG, preference + " -> " + convertIdsToNames(matches.get(preference)));
         }
 
         // Set PeekHeight
         mBottomSheetBehavior.setPeekHeight(peekHeight);
 
         // Load RecycleView
-        recyclerView.setAdapter(new RecyclerViewStringListAdapter(itinerary, initialMatches));
+        recyclerView.setAdapter(new RecyclerViewStringListAdapter(itinerary, matchNames, matchPreferences));
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+    }
+
+    private void drawMovingLoc() {
+        Polyline line = mMap.addPolyline(new PolylineOptions()
+                .addAll(newLocs)
+                .width(20)
+                .color(Color.RED));
+    }
+
+    private String readStream(InputStream is) {
+        try {
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            int i = is.read();
+            while (i != -1) {
+                bo.write(i);
+                i = is.read();
+            }
+            return bo.toString();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    private void enableMyLocation() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+        } else {
+            mMap.setMyLocationEnabled(true);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case 0: { // ACCESS_FINE_LOCATION case
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    enableMyLocation();
+                } else {
+                    // permission denied: quit app (location is vital to usage..)
+                    // TODO: handle this more cleanly instead of just exiting out
+                    finish();
+                }
+                break;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request
+        }
+    }
+
+    // Source: http://stackoverflow.com/questions/600207/how-to-check-if-a-service-is-running-on-android
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
@@ -436,69 +546,5 @@ public class MainActivity extends FragmentActivity implements
                 // TODO: handle errors
             }
         }
-    }
-
-    private void drawMovingLoc() {
-        Polyline line = mMap.addPolyline(new PolylineOptions()
-                .addAll(newLocs)
-                .width(20)
-                .color(Color.RED));
-    }
-
-    private String readStream(InputStream is) {
-        try {
-            ByteArrayOutputStream bo = new ByteArrayOutputStream();
-            int i = is.read();
-            while (i != -1) {
-                bo.write(i);
-                i = is.read();
-            }
-            return bo.toString();
-        } catch (IOException e) {
-            return "";
-        }
-    }
-
-    private void enableMyLocation() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
-        } else {
-            mMap.setMyLocationEnabled(true);
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case 0: { // ACCESS_FINE_LOCATION case
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                    enableMyLocation();
-                } else {
-                    // permission denied: quit app (location is vital to usage..)
-                    // TODO: handle this more cleanly instead of just exiting out
-                    finish();
-                }
-                return;
-            }
-
-            // other 'case' lines to check for other
-            // permissions this app might request
-        }
-    }
-
-    // Source: http://stackoverflow.com/questions/600207/how-to-check-if-a-service-is-running-on-android
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
     }
 }

@@ -3,8 +3,6 @@ package edu.umd.cs.xplore;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Color;
-import android.location.Address;
-import android.location.Geocoder;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -47,7 +45,6 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -57,7 +54,9 @@ import javax.net.ssl.HttpsURLConnection;
 public class PreferencesActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener, GoogleApiClient.OnConnectionFailedListener {
 
     public static final String SELECTED_PREFERENCES = "edu.umd.cs.xplore.SELECTED_PREFERENCES";
-    public static final String ITINERARY = "edu.umd.cs.xplore.ITINERARY";
+    public static final String MATCHES = "edu.umd.cs.xplore.MATCHES";
+    public static final String MATCH_NAMES = "edu.umd.cs.xplore.MATCH_NAMES";
+    public static final String MATCH_PREFERENCES = "edu.umd.cs.xplore.MATCH_PREFERENCES";
 
     private static final String PREFERENCE_TITLE = "What are your interests?";
     private static final String TAG = "PreferencesActivity";
@@ -95,48 +94,61 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
         // set up the Spinner (dropdown of destinations)
         Spinner destSpinner = (Spinner) findViewById(R.id.destination_spinner);
-        destSpinner.setOnItemSelectedListener(this);
-        ArrayAdapter<String> destAdapter =
-                new ArrayAdapter<String>(this, R.layout.spinner_item, destinationList);
-        destAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
-        destSpinner.setAdapter(destAdapter);
+        if (destSpinner == null) {
+            Log.e(TAG, "Destination spinner is null");
+        } else {
+            destSpinner.setOnItemSelectedListener(this);
+            ArrayAdapter<String> destAdapter =
+                    new ArrayAdapter<String>(this, R.layout.spinner_item, destinationList);
+            destAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
+            destSpinner.setAdapter(destAdapter);
+        }
 
         // set up the FAB
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.send_preferences_fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+        if (fab == null) {
+            Log.e(TAG, "FAB is null");
+        } else {
+            fab.setOnClickListener(new View.OnClickListener() {
 
-            public void onClick(View view) {
-                createAndPassItinerary();
-            }
-        });
+                public void onClick(View view) {
+                    createAndPassItinerary(curDestination);
+                }
+            });
+        }
 
         // set up the preferences question title
         TextView prefTitleView = (TextView) findViewById(R.id.preferences_title);
-        prefTitleView.setText(PREFERENCE_TITLE);
+        if (prefTitleView == null) {
+            Log.e(TAG, "Preference title view is null");
+        } else {
+            prefTitleView.setText(PREFERENCE_TITLE);
+        }
 
         // set up the grid list of preferences
         prefAdapter = new PreferencesAdapter(this.getApplicationContext());
         GridView prefGridView = (GridView) findViewById(R.id.preferences_grid);
-        prefGridView.setAdapter(prefAdapter);
+        if (prefGridView == null) {
+            Log.e(TAG, "Preference grid view is null");
+        } else {
+            prefGridView.setAdapter(prefAdapter);
 
-        // when a preference item is selected, it should be highlighted and should
-        // be added to list of preferences to be passed to the next Activity
-        prefGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-
-            private String curPreferenceTag;
-
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                curPreferenceTag = prefList.getPreferenceTag(position);
-                if (selectedPreferences.contains(curPreferenceTag)) {
-                    selectedPreferences.remove(curPreferenceTag);
-                    view.setBackgroundColor(Color.WHITE);
-                } else {
-                    selectedPreferences.add(curPreferenceTag);
-                    view.setBackgroundResource(R.color.colorAccent);
+            // when a preference item is selected, it should be highlighted and should
+            // be added to list of preferences to be passed to the next Activity
+            prefGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    String curPreferenceTag = prefList.getPreferenceTag(position);
+                    if (selectedPreferences.contains(curPreferenceTag)) {
+                        selectedPreferences.remove(curPreferenceTag);
+                        view.setBackgroundColor(Color.WHITE);
+                    } else {
+                        selectedPreferences.add(curPreferenceTag);
+                        view.setBackgroundResource(R.color.colorAccent);
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // Connected to Google Places API
         // ATTENTION: This "addApi(AppIndex.API)"was auto-generated to implement the App Indexing API.
@@ -155,7 +167,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         findPlacesProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
     }
 
-    public void convertPlaceIdToPlace(String placeId) {
+    public void convertPlaceIdToPlace(final String placeId, final String placeName) {
         // Get place
         Log.i(TAG, "Getting Place from Place ID...");
         PendingResult<PlaceBuffer> placeResults = Places.GeoDataApi.getPlaceById(mGoogleApiClient, placeId);
@@ -164,12 +176,12 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
             public void onResult(@NonNull PlaceBuffer places) {
                 Place destination = places.get(0);
                 Log.i(TAG, String.format("Place = %s", destination.getName().toString()));
-                findNearby(destination.getLatLng());
+                findNearby(placeId, placeName, destination.getLatLng());
             }
         });
     }
 
-    public void convertStringToPlaceId(String placeName) {
+    public void convertStringToPlaceId(final String placeName) {
         // Get place ID
         Log.i(TAG, "Converting curr destination string to Place ID...");
         PendingResult<AutocompletePredictionBuffer> autocompleteResults
@@ -180,48 +192,37 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                 AutocompletePrediction prediction = autocompletePredictions.get(0);
                 String placeId = prediction.getPlaceId();
                 Log.i(TAG, String.format("Place ID = %s", placeId));
-                convertPlaceIdToPlace(placeId);
+                convertPlaceIdToPlace(placeId, placeName);
             }
         });
     }
 
-    public void findNearby(LatLng latLng) {
+    public void findNearby(String placeId, String placeName, LatLng latLng) {
         String position = Double.toString(latLng.latitude) + "," + Double.toString(latLng.longitude);
         Log.i(TAG, "LatLng of dest = " + position);
-        SearchNearbyAsyncTask searchTask = new SearchNearbyAsyncTask(curDestination, selectedPreferences);
+        SearchNearbyAsyncTask searchTask = new SearchNearbyAsyncTask(placeId, placeName, selectedPreferences);
         searchTask.execute(position);
     }
 
-    public void createAndPassItinerary() {
+    public void createAndPassItinerary(String destination) {
         // Find destination coordinates in order to find nearby places
         Log.i(TAG, "Finding destination coordinates...");
 
-        // Try to use geocoder, otherwise need to use Places API
-        Geocoder gcd = new Geocoder(PreferencesActivity.this);
-        List<Address> possibleDestinations = null;
-        try {
-            possibleDestinations = gcd.getFromLocationName(curDestination, 1);
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to geocode " + curDestination, e);
-        }
-
-        // Check to see if geocoder worked
-        if (possibleDestinations == null || possibleDestinations.isEmpty()) {
-            Log.e(TAG, "Possible destinations is empty");
-            // Use Places API to find nearby
-            convertStringToPlaceId(curDestination);
-        } else {
-            Address destinationAddress = possibleDestinations.get(0);
-            findNearby(new LatLng(destinationAddress.getLatitude(), destinationAddress.getLongitude()));
-        }
+        // Use Google Places API
+        convertStringToPlaceId(destination);
     }
 
-    private void sendIntent(ArrayList<String> preferences, HashMap<String, ArrayList<String>> matches) {
+    private void sendIntent(ArrayList<String> preferences,
+                            HashMap<String, ArrayList<String>> matches,
+                            HashMap<String, String> matchNames,
+                            HashMap<String, String> matchPreferences) {
         Intent intent = new Intent(getApplicationContext(), MainActivity.class);
         intent.setAction(Intent.ACTION_SEND);
         intent.putExtra(SELECTED_PREFERENCES, preferences);
-        intent.putExtra(ITINERARY, matches);
-        intent.putExtra(PlanActivity.DURATION, duration);
+        intent.putExtra(MATCHES, matches);
+        intent.putExtra(MATCH_NAMES, matchNames);
+        intent.putExtra(MATCH_PREFERENCES, matchPreferences);
+        intent.putExtra(PlanActivity.DURATION, duration); // Pass along duration
         intent.setType("list/preferences");
         startActivity(intent);
     }
@@ -358,67 +359,32 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         mGoogleApiClient.disconnect();
     }
 
-//    private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
-//
-//        @Override
-//        protected String doInBackground(String... params) {
-//            try {
-//                StringBuilder urlStringBuilder = new StringBuilder();
-//                urlStringBuilder.append("https://maps.googleapis.com/maps/api/directions/json?origin=");
-//                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
-//                urlStringBuilder.append("&destination=");
-//                urlStringBuilder.append(URLEncoder.encode(params[0], "UTF-8"));
-//                urlStringBuilder.append("&waypoints=");
-//                urlStringBuilder.append(URLEncoder.encode(params[1], "UTF-8"));
-//
-//                URL reqURL = new URL(urlStringBuilder.toString());
-//                HttpsURLConnection urlConnection = (HttpsURLConnection) reqURL.openConnection();
-//                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-//                String queryResponse = readStream(in);
-//                urlConnection.disconnect(); // TODO: put this in a "finally" block
-//
-//                return queryResponse;
-//            } catch (Exception e) {
-//                // TODO: handle errors; particularly an error resulting from no internet access
-//                return "";
-//            }
-//        }
-//
-//        @Override
-//        protected void onPostExecute(String result) {
-//            try {
-//                // parse request result into JSON object
-//                JSONObject directionsResult = new JSONObject(result);
-//
-//                // using first route by default
-//                JSONObject route = directionsResult.getJSONArray("routes").getJSONObject(0);
-//                travelTime = route.getInt("duration");
-//                Log.i(TAG, String.format("Travel time = %d seconds", travelTime));
-//            } catch (Exception e) {
-//                // TODO: handle errors
-//            }
-//        }
-//    }
-
     private class SearchNearbyAsyncTask extends AsyncTask<String, Void, String[]> {
 
-        // Matches result and list of preferences
-        private HashMap<String, ArrayList<String>> result;
+        // Match names and IDs and list of preferences
         private ArrayList<String> preferences;
+        private HashMap<String, ArrayList<String>> matches;
+        private HashMap<String, String> matchNames;
+        private HashMap<String, String> matchPreferences;
 
-        public SearchNearbyAsyncTask(String destination, HashSet<String> selectedPreferences) {
-            result = new HashMap<String, ArrayList<String>>();
-            preferences = new ArrayList<String>(selectedPreferences);
-
+        public SearchNearbyAsyncTask(String placeId, String placeName, HashSet<String> selectedPreferences) {
+            // Initialize preferences
             if (!selectedPreferences.isEmpty()) {
                 preferences = new ArrayList<String>(selectedPreferences);
             } else {
                 preferences = new ArrayList<String>(PreferenceList.getInstance().getPreferenceTags());
             }
 
+            // Initialize fields
+            matches = new HashMap<String, ArrayList<String>>();
+            matchNames = new HashMap<String, String>();
+            matchPreferences = new HashMap<String, String>();
+
+            // Add place ID to matches
             ArrayList<String> destinationList = new ArrayList<String>();
-            destinationList.add(destination);
-            result.put("destination", destinationList);
+            destinationList.add(placeId);
+            matches.put("destination", destinationList);
+            matchNames.put(placeId, placeName);
         }
 
         @Override
@@ -473,16 +439,19 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
                     JSONObject directionsResult = new JSONObject(results[i]);
 
                     // Construct list of place names for preference
-                    ArrayList<String> placeNames = new ArrayList<String>();
+                    ArrayList<String> placeIds = new ArrayList<String>();
 
                     // using first route by default
                     JSONArray places = directionsResult.getJSONArray("results");
                     for (int j = 0; j < places.length(); j++) {
                         JSONObject place = places.getJSONObject(j);
-                        placeNames.add(place.getString("name"));
+                        String placeId = place.getString("place_id");
+                        String placeName = place.getString("name");
+                        placeIds.add(placeId);
+                        matchNames.put(placeId, placeName);
+                        matchPreferences.put(placeId, preferences.get(i));
                     }
-                    Log.i(TAG, preferences.get(i) + " -> " + placeNames);
-                    result.put(preferences.get(i), placeNames);
+                    matches.put(preferences.get(i), placeIds);
                 }
             } catch (Exception e) {
                 // TODO: handle errors
@@ -490,7 +459,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
             }
 
             findPlacesProgressDialog.hide();
-            sendIntent(preferences, result);
+            sendIntent(preferences, matches, matchNames, matchPreferences);
         }
     }
 

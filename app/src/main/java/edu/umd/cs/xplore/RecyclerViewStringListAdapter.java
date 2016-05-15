@@ -9,55 +9,68 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 public class RecyclerViewStringListAdapter extends RecyclerView.Adapter {
 
-    private PreferenceList prefList = PreferenceList.getInstance();
-    private static String TAG = "RecyclerViewString";
+    private static String TAG = "RecyclerViewStringListAdapter";
 
-    protected class ViewHolder extends RecyclerView.ViewHolder {
-        ImageView ivImage;
-        TextView tvText;
+    private PreferenceList prefList = PreferenceList.getInstance();
+    private ArrayList<String> itinerary;
+    private HashMap<String, String> matchNames;
+    private HashMap<String, String> matchPreferences;
+
+    public RecyclerViewStringListAdapter(ArrayList<String> itinerary,
+                                         HashMap<String, String> matchNames,
+                                         HashMap<String, String> matchPreferences) {
+        this.itinerary = itinerary;
+        this.matchNames = matchNames;
+        this.matchPreferences = matchPreferences;
+    }
+
+    @Override
+    public int getItemCount() {
+        return itinerary.size();
+    }
+
+    @Override
+    public ViewHolder onCreateViewHolder(ViewGroup parent, int i) {
+        View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item, parent, false);
+        return new ViewHolder(itemView);
+    }
+
+    @Override
+    public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+        // Get item info
+        String id = itinerary.get(position);
+        String name = matchNames.get(id);
+        String preference = matchPreferences.get(id);
+
+        // Create view holder
+        ViewHolder myViewHolder = (ViewHolder) holder;
+        myViewHolder.setText(name);
+        int imagePos = prefList.getImageId(preference);
+        if (imagePos < 0) {
+            imagePos = 0;
+        }
+        myViewHolder.setImageResource(prefList.getImageId(imagePos));
+    }
+
+    private class ViewHolder extends RecyclerView.ViewHolder {
+        private ImageView ivImage;
+        private TextView tvText;
 
         public ViewHolder(View itemView) {
             super(itemView);
             ivImage = (ImageView) itemView.findViewById(R.id.ivImage);
             tvText = (TextView) itemView.findViewById(R.id.tvText);
         }
-    }
 
-    private List strings;
-    HashMap<String, ArrayList<String>> matches;
-
-    public RecyclerViewStringListAdapter(List strings, HashMap<String, ArrayList<String>> matches) {
-        this.strings = strings;
-        this.matches = matches;
-    }
-
-    @Override
-    public int getItemCount() {
-        return strings.size();
-    }
-
-    @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int i) {
-        View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item, parent, false);
-        ViewHolder viewHolder = new ViewHolder(itemView);
-        return viewHolder;
-    }
-
-    @Override
-    public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-        ViewHolder myViewHolder = (ViewHolder) holder;
-        myViewHolder.tvText.setText((String) strings.get(position));
-        int imagePos = 0;
-        for (String key : this.matches.keySet()) {
-            if (this.matches.get(key).contains(this.strings.get(position))) {
-                imagePos = prefList.getImageId(key);
-            }
+        public void setImageResource(int resId) {
+            this.ivImage.setImageResource(resId);
         }
-        if(imagePos<0){imagePos = 0;}
-        myViewHolder.ivImage.setImageResource(prefList.getImageId(imagePos));
+
+        public void setText(String text) {
+            this.tvText.setText(text);
+        }
     }
 }

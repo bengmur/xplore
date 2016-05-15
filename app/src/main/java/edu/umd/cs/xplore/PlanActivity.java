@@ -7,9 +7,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.widget.LinearLayout;
 import android.widget.NumberPicker;
-import android.widget.ProgressBar;
 
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.places.Place;
