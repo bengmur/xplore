@@ -585,10 +585,10 @@ public class MainActivity extends FragmentActivity implements
                     JSONObject currLeg = routeLegs.getJSONObject(i);
 
                     // Add a marker on end location of current leg
-                    JSONObject startLocJSON = currLeg.getJSONObject("start_location");
-                    LatLng startLocLatLng = new LatLng(startLocJSON.getDouble("lat"), startLocJSON.getDouble("lng"));
+                    JSONObject endLocJSON = currLeg.getJSONObject("start_location");
+                    LatLng endLocLatLng = new LatLng(endLocJSON.getDouble("lat"), endLocJSON.getDouble("lng"));
 
-                    Marker m = mMap.addMarker(new MarkerOptions().position(startLocLatLng).title(currLeg.getString("end_address")));
+                    Marker m = mMap.addMarker(new MarkerOptions().position(endLocLatLng).title(currLeg.getString("end_address")));
                     mapMarkers.add(m);
                     itineraryAddresses.add(currLeg.getString("end_address"));
                     JSONObject currLatLng = currLeg.getJSONObject("end_location");
