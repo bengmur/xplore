@@ -588,7 +588,7 @@ public class MainActivity extends FragmentActivity implements
                     JSONObject endLocJSON = currLeg.getJSONObject("end_location");
                     LatLng endLocLatLng = new LatLng(endLocJSON.getDouble("lat"), endLocJSON.getDouble("lng"));
 
-                    if (i == routeLegs.length() - 1) {
+                    if (i < routeLegs.length() - 1) {
                         Marker m = mMap.addMarker(new MarkerOptions().position(endLocLatLng).title(currLeg.getString("end_address")));
                         mapMarkers.add(m);
                     }
