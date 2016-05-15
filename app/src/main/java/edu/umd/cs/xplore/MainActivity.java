@@ -3,13 +3,16 @@ package edu.umd.cs.xplore;
 import android.Manifest;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.design.widget.BottomSheetBehavior;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -71,6 +74,25 @@ public class MainActivity extends FragmentActivity implements
     private RecyclerView recyclerView;
     private ArrayList<LatLng> actualLocations = new ArrayList<LatLng>();
     private ArrayList<LatLng> newLocs;
+    private boolean tripActive = false;
+    private LocationTracker locService;
+    private boolean pendingDrawMap = false;
+    private boolean pendingLocService = false;
+
+    private ServiceConnection locTrackerConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            locService = ((LocationTracker.LocationTrackerBinder)service).getService();
+
+            if (pendingLocService) {
+                pendingLocService = false;
+                drawRoute();
+            }
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            locService = null;
+        }
+    };
 
     private BroadcastReceiver locationReceiver = new BroadcastReceiver() {
 
@@ -87,7 +109,9 @@ public class MainActivity extends FragmentActivity implements
                 newLocs.addAll((ArrayList<LatLng>) bundle.get("locs"));
                 actualLocations.addAll((ArrayList<LatLng>) bundle.get("locs"));
 
-                drawMovingLoc();
+                if (tripActive) {
+                    drawMovingLoc();
+                }
             }
         }
     };
@@ -201,53 +225,46 @@ public class MainActivity extends FragmentActivity implements
         } else {
             //TODO Handle other intents
         }
+
+        // Register broadcast receiver for location updates
+        registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
+
+        // Start loc tracking service if not yet running
+        Intent serviceIntent = new Intent(this, LocationTracker.class);
+        if (!isMyServiceRunning(LocationTracker.class)) {
+            startService(serviceIntent);
+        }
+        // Bind to loc tracking service
+        bindService(serviceIntent, locTrackerConnection, 0);
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-
-        // Send broadcast that activity is starting and needs ALL locations from a previously started
-        // service (if Activity was started earlier)
-        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
-        activityStatusIntent.putExtra("stopStatus", false);
-        sendBroadcast(activityStatusIntent);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
-        // Register broadcast receiver for location updates
-        registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
-
-        // Send broadcast that activity is ready to receive location updates
-        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
-        activityStatusIntent.putExtra("pauseStatus", false);
-        sendBroadcast(activityStatusIntent);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
-        // Send broadcast that activity is not able to receive location updates
-        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
-        activityStatusIntent.putExtra("pauseStatus", true);
-        sendBroadcast(activityStatusIntent);
-
-        // Unregister broadcast receiver for location updates (in case Activity is stopped)
-        unregisterReceiver(locationReceiver);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+    }
 
-        // Send broadcast that activity is stopping and will need ALL locations re-sent when started
-        Intent activityStatusIntent = new Intent("edu.umd.cs.xplore.MAIN_STATUS");
-        activityStatusIntent.putExtra("stopStatus", true);
-        sendBroadcast(activityStatusIntent);
+    @Override
+    protected void onDestroy() {
+        unbindService(locTrackerConnection);
+        // Unregister broadcast receiver for location updates (in case Activity is destroyed)
+        unregisterReceiver(locationReceiver);
+
+        super.onDestroy();
     }
 
     /**
@@ -268,28 +285,44 @@ public class MainActivity extends FragmentActivity implements
         // coordinates of current location to the device under "Location Controls".
         enableMyLocation();
 
-        // Register broadcast receiver
-        registerReceiver(locationReceiver, new IntentFilter("edu.umd.cs.xplore.LOC_UPDATE"));
+        if (pendingDrawMap) {
+            pendingDrawMap = false;
+            drawRoute();
+        }
+    }
 
-        // Start loc tracking service if not yet running
-        if (!isMyServiceRunning(LocationTracker.class)) {
-            Intent serviceIntent = new Intent(this, LocationTracker.class);
-            startService(serviceIntent);
+    // Clear old routing on any updates to itinerary
+    private void clearRoute() {
+        // TODO: implement
+    }
+
+    private void drawRoute() {
+        if (mMap == null) {
+            pendingDrawMap = true;
+            return;
+        }
+
+        if (locService == null) {
+            pendingLocService = true;
+            return;
         }
 
         // Sample addresses for testing prior to integration with actual initial places
         // These can be addresses, precise location names, etc. (anything that Google Maps can find the *correct* coordinates for)
         // TODO: use current location for start/end points
-        String[] addrSamples = {"12060 Cherry Hill Rd, Silver Spring, MD 20904",
-                "10135 Colesville Rd, Silver Spring, MD 20901",
-                "10161 New Hampshire Ave, Silver Spring, MD 20903",
-                "907 Ellsworth Dr, Silver Spring, MD 20910",
-                "5506 Cherrywood Ln, Greenbelt, MD 20770"};
+        ArrayList<String> modItineray = new ArrayList<String>();
+        modItineray.add("Chipotle Mexican Grill, New Hampshire Ave, Silver Spring, MD");
+        LatLng currLoc = locService.getCurrentLocation();
+        String currLocStr = currLoc.latitude + ", " + currLoc.longitude;
+        modItineray.add(0, currLocStr);
+        modItineray.add(currLocStr);
+
+        String[] modItineraryArray = new String[modItineray.size()];
+        modItineray.toArray(modItineraryArray);
 
         // Draw polyline connecting places (up to 23 places allowed by the API for the single request)
         DirectionsAsyncTask routePolylineDrawer = new DirectionsAsyncTask();
-        routePolylineDrawer.execute(addrSamples);
-
+        routePolylineDrawer.execute(modItineraryArray);
     }
 
     private String putNewPlaceInItinerary() {
@@ -342,6 +375,8 @@ public class MainActivity extends FragmentActivity implements
             Log.i(TAG, "Found place = " + convertIdToName(place));
         }
         Log.i(TAG, "Itinerary = " + convertIdsToNames(itinerary));
+
+        drawRoute();
     }
 
     private String convertIdToName(String id) {
@@ -411,70 +446,6 @@ public class MainActivity extends FragmentActivity implements
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 
-    private void drawMovingLoc() {
-        Polyline line = mMap.addPolyline(new PolylineOptions()
-                .addAll(newLocs)
-                .width(20)
-                .color(Color.RED));
-    }
-
-    private String readStream(InputStream is) {
-        try {
-            ByteArrayOutputStream bo = new ByteArrayOutputStream();
-            int i = is.read();
-            while (i != -1) {
-                bo.write(i);
-                i = is.read();
-            }
-            return bo.toString();
-        } catch (IOException e) {
-            return "";
-        }
-    }
-
-    private void enableMyLocation() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
-        } else {
-            mMap.setMyLocationEnabled(true);
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case 0: { // ACCESS_FINE_LOCATION case
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                    enableMyLocation();
-                } else {
-                    // permission denied: quit app (location is vital to usage..)
-                    // TODO: handle this more cleanly instead of just exiting out
-                    finish();
-                }
-                break;
-            }
-
-            // other 'case' lines to check for other
-            // permissions this app might request
-        }
-    }
-
-    // Source: http://stackoverflow.com/questions/600207/how-to-check-if-a-service-is-running-on-android
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private class DirectionsAsyncTask extends AsyncTask<String, Void, String> {
 
         @Override
@@ -535,7 +506,7 @@ public class MainActivity extends FragmentActivity implements
                         Polyline line = mMap.addPolyline(new PolylineOptions()
                                 .addAll(pointsList)
                                 .width(20)
-                                .color(Color.CYAN));
+                                .color(Color.argb(255, 170, 170, 170)));
                     }
                 }
 
@@ -550,5 +521,69 @@ public class MainActivity extends FragmentActivity implements
                 // TODO: handle errors
             }
         }
+    }
+
+    private void drawMovingLoc() {
+        Polyline line = mMap.addPolyline(new PolylineOptions()
+                .addAll(newLocs)
+                .width(20)
+                .color(Color.argb(255, 0, 191, 255)));
+    }
+
+    private String readStream(InputStream is) {
+        try {
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            int i = is.read();
+            while (i != -1) {
+                bo.write(i);
+                i = is.read();
+            }
+            return bo.toString();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    private void enableMyLocation() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+        } else {
+            mMap.setMyLocationEnabled(true);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case 0: { // ACCESS_FINE_LOCATION case
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    enableMyLocation();
+                } else {
+                    // permission denied: quit app (location is vital to usage..)
+                    // TODO: handle this more cleanly instead of just exiting out
+                    finish();
+                }
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request
+        }
+    }
+
+    // Source: http://stackoverflow.com/questions/600207/how-to-check-if-a-service-is-running-on-android
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
