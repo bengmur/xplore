@@ -69,6 +69,13 @@ public class LocationTracker extends Service implements LocationListener {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getBooleanExtra(LocationManager.KEY_PROXIMITY_ENTERING, false)) {
+                Intent mainActivityIntent = new Intent(getApplicationContext(), MainActivity.class);
+                mainActivityIntent.setAction(Intent.ACTION_MAIN);
+                mainActivityIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                mainActivityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                mainActivityIntent.addFlags(Intent.FLAG_FROM_BACKGROUND);
+                startActivity(mainActivityIntent);
+
                 if (activityDestroyed) {
                     resendProximityAlert = true;
                 }
