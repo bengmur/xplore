@@ -138,6 +138,8 @@ public class LocationTracker extends Service implements LocationListener {
                 .build();
 
         Intent notificationIntent = new Intent(getApplicationContext(), MainActivity.class);
+        notificationIntent.setAction(Intent.ACTION_MAIN);
+        notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
         notification.contentIntent = pendingIntent;
         startForeground(1, notification);
