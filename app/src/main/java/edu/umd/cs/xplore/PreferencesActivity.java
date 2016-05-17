@@ -107,10 +107,10 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
             if ("possibleDestinations".equals(type)) {
                 handleSendDestinations(intent);
             } else {
-                // TODO Handle other intents
+                // Handle other intents
             }
         } else {
-            // TODO Handle other intents
+            // Handle other intents
         }
 
         // set up the toolbar
@@ -258,7 +258,6 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 //    private void detectCurrentPlace() {
 //        Log.i(TAG, "Detecting current place...");
 //        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-//            // TODO: Consider calling
 //            //    ActivityCompat#requestPermissions
 //            // here to request the missing permissions, and then overriding
 //            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
@@ -304,7 +303,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // TODO determine if you need a menu for this activity
+        // use for a menu as needed
         return true;
     }
 
@@ -313,7 +312,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // TODO determine if you need a menu for this activity
+        // use for a menu as needed
         return true;
     }
 
@@ -343,8 +342,7 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        // TODO: Please implement GoogleApiClient.OnConnectionFailedListener to handle connection failures.
-        Log.e(TAG, "Connection failure not handled");
+        Log.e(TAG, "Connection failed");
     }
 
     @Override
@@ -355,13 +353,9 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         mGoogleApiClient.connect();
         Action viewAction = Action.newAction(
-                Action.TYPE_VIEW, // TODO: choose an action type.
-                "Preferences Page", // TODO: Define a title for the content shown.
-                // TODO: If you have web page content that matches this app activity's content,
-                // make sure this auto-generated web page URL is correct.
-                // Otherwise, set the URL to null.
+                Action.TYPE_VIEW, // choose an action type.
+                "Preferences Page", // Define a title for the content shown.
                 Uri.parse("http://host/path"),
-                // TODO: Make sure this auto-generated app URL is correct.
                 Uri.parse("android-app://edu.umd.cs.xplore/http/host/path")
         );
         AppIndex.AppIndexApi.start(mGoogleApiClient, viewAction);
@@ -379,13 +373,9 @@ public class PreferencesActivity extends AppCompatActivity implements AdapterVie
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         Action viewAction = Action.newAction(
-                Action.TYPE_VIEW, // TODO: choose an action type.
-                "Preferences Page", // TODO: Define a title for the content shown.
-                // TODO: If you have web page content that matches this app activity's content,
-                // make sure this auto-generated web page URL is correct.
-                // Otherwise, set the URL to null.
+                Action.TYPE_VIEW, // choose an action type.
+                "Preferences Page", // Define a title for the content shown.
                 Uri.parse("http://host/path"),
-                // TODO: Make sure this auto-generated app URL is correct.
                 Uri.parse("android-app://edu.umd.cs.xplore/http/host/path")
         );
         AppIndex.AppIndexApi.end(mGoogleApiClient, viewAction);

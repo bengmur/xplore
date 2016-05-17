@@ -201,7 +201,6 @@ public class LocationTracker extends Service implements LocationListener {
 
             return new LatLng(lastLoc.getLatitude(), lastLoc.getLongitude());
         } catch (SecurityException ex) {
-            // TODO: req permission
         }
         if (allLocs.size() > 1) {
             return allLocs.get(allLocs.size() - 1);
@@ -216,7 +215,6 @@ public class LocationTracker extends Service implements LocationListener {
             this.locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
                     LOCATION_INTERVAL, LOCATION_DISTANCE, this);
         } catch (SecurityException ex) {
-            // TODO: req permission
         }
     }
 

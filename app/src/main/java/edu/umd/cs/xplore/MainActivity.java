@@ -60,9 +60,6 @@ public class MainActivity extends FragmentActivity implements
         OnMapReadyCallback,
         ActivityCompat.OnRequestPermissionsResultCallback {
 
-    // TODO: GoogleMap?
-    // TODO: BottomSheetBehavior
-    // TODO: Peek Height?
     public static final String SELECTED_PREFS = "edu.umd.cs.xplore.SELECTED_PREFS";
     public static final String MATCHES = "edu.umd.cs.xplore.MATCHES";
     public static final String MATCH_NAMES = "edu.umd.cs.xplore.MATCH_NAMES";
@@ -137,7 +134,6 @@ public class MainActivity extends FragmentActivity implements
         public void onReceive(Context context, Intent intent) {
             Bundle bundle = intent.getExtras();
             if (bundle != null) {
-                //TODO: This can probably be optimized
                 newLocs = new ArrayList<LatLng>();
 
                 if (actualLocations.size() > 0) {
@@ -347,10 +343,10 @@ public class MainActivity extends FragmentActivity implements
                 fab.setImageDrawable(getResources().getDrawable(
                         R.drawable.ic_navigation_white_24dp, getTheme()));
             } else {
-                //TODO Handle other intents
+                // Handle other intents here
             }
         } else {
-            //TODO Handle other intents
+            // Handle other intents here
         }
 
         if (itinerary != null) {
@@ -496,7 +492,7 @@ public class MainActivity extends FragmentActivity implements
         String[] modItineraryArray = new String[modItinerary.size()];
         modItinerary.toArray(modItineraryArray);
 
-        itineraryBounds = modItinerary.size(); // TODO: this should not have to be here; clean this up
+        itineraryBounds = modItinerary.size();
 
         // Draw polyline connecting places (up to 23 places allowed by the API for the single request)
         DirectionsAsyncTask routePolylineDrawer = new DirectionsAsyncTask();
@@ -667,8 +663,7 @@ public class MainActivity extends FragmentActivity implements
 
                     enableMyLocation();
                 } else {
-                    // permission denied: quit app (location is vital to usage..)
-                    // TODO: handle this more cleanly instead of just exiting out
+                    // Location is integral to app
                     finish();
                 }
                 return;
@@ -717,11 +712,10 @@ public class MainActivity extends FragmentActivity implements
                 HttpsURLConnection urlConnection = (HttpsURLConnection) reqURL.openConnection();
                 InputStream in = new BufferedInputStream(urlConnection.getInputStream());
                 String queryResponse = readStream(in);
-                urlConnection.disconnect(); // TODO: put this in a "finally" block
+                urlConnection.disconnect();
 
                 return queryResponse;
             } catch (Exception e) {
-                // TODO: handle errors; particularly an error resulting from no internet access
                 return "";
             }
         }
@@ -753,7 +747,6 @@ public class MainActivity extends FragmentActivity implements
                     itineraryLatLngs.add(endLocLatLng);
 
                     // Draw PolyLine for each step in the leg
-                    // TODO: Store PolyLines so color can be modified as user progresses along journey
                     JSONArray currLegSteps = currLeg.getJSONArray("steps");
                     for (int j = 0; j < currLegSteps.length(); j++) {
                         String encodedPolyline = currLegSteps.getJSONObject(j).getJSONObject("polyline").getString("points");
@@ -777,7 +770,6 @@ public class MainActivity extends FragmentActivity implements
                         routeBounds.getJSONObject("northeast").getDouble("lng"));
                 mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(new LatLngBounds(southwestBound, northeastBound), 400));
             } catch (Exception e) {
-                // TODO: handle errors
             }
         }
     }
